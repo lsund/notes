@@ -8,7 +8,15 @@ tiddlywiki (associative, non-linear notetaking with links as the main
 construct), but as I prefer the command line, I tried to implement something
 that works without using the mouse.
 
-# WIP
+## Running
+
+E.g.
+```
+stack install
+~/.local/bin/notes-exe
+```
+
+## WIP
 
 This is a work in process. There is still a lot of work to be done in terms of
 
