@@ -26,7 +26,6 @@ source-repository head
 library
   exposed-modules:
       Database
-      Lib
       Note
       Shared
   other-modules:

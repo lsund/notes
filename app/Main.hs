@@ -3,6 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Main where
 
+import System.IO (openFile, IOMode(..))
 import Lens.Micro
 import Lens.Micro.TH
 import qualified Note
@@ -17,7 +18,7 @@ import qualified Brick.Types as T
 import Brick.Util ( on)
 import Database (serialize, deserialize)
 
-file = "database.txt"
+file = "~/notes-database.txt"
 
 data St =
     St { _focusRing :: F.FocusRing Name
@@ -99,6 +100,7 @@ initialState =
        (E.editor EditContent Nothing "")
        View1
 
+-- TODO check if file exists and create it if not
 main :: IO ()
 main = do
     xs <- deserialize file
