@@ -33,7 +33,7 @@ data Note = Note { _title :: String, _content :: String }
 makeLenses ''Note
 
 instance Show Note where
-    show (Note title content) = title <> "#" <> content
+    show (Note title content) = title <> "#" <> content <> "#"
 
 styles :: [(Text, BS.BorderStyle)]
 styles =

@@ -7,9 +7,7 @@ import Data.List.Split
 import Data.Maybe (mapMaybe)
 
 serialize :: FilePath -> [Note] -> IO ()
-serialize file = do
-    let _ = writeFile file ""
-    mapM_ (appendFile file . show)
+serialize file = mapM_ (appendFile file . show)
 
 deserializeNote :: [String] -> Maybe Note
 deserializeNote [x, y] = Just $ Note x y

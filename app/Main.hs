@@ -3,7 +3,9 @@
 {-# LANGUAGE RankNTypes #-}
 module Main where
 
-import System.IO (openFile, IOMode(..))
+import System.Posix.User
+import Control.Monad (when)
+import System.Directory (createDirectoryIfMissing, doesFileExist)
 import Lens.Micro
 import Lens.Micro.TH
 import qualified Note
@@ -18,7 +20,8 @@ import qualified Brick.Types as T
 import Brick.Util ( on)
 import Database (serialize, deserialize)
 
-file = "~/notes-database.txt"
+dbdir = "db"
+dbfile = "db/notes-database.txt"
 
 data St =
     St { _focusRing :: F.FocusRing Name
@@ -100,12 +103,13 @@ initialState =
        (E.editor EditContent Nothing "")
        View1
 
--- TODO check if file exists and create it if not
 main :: IO ()
 main = do
-    xs <- deserialize file
+    exists <- doesFileExist dbfile
+    createDirectoryIfMissing True dbdir
+    when (not exists) $  writeFile dbfile ""
+    xs <- deserialize dbfile
     st <- M.defaultMain theApp $ initialState xs
-    serialize file (st^.notes)
+    serialize dbfile (st^.notes)
     putStrLn "Done"
-
 
