@@ -13,6 +13,10 @@ Alternatives to this that actually works are
 Mode](https://orgmode.org/), but those are based and constrained by the usage
 of those editors. Other alternatives ....?
 
+## Current state
+
+Can add and store and display notes. Not much more.
+
 ## Design goals
 
 * It is a terminal user interface only. There are plenty of note-taking
