@@ -18,12 +18,8 @@ stack install
 
 ## WIP
 
-This is a work in process. There is still a lot of work to be done in terms of
+This is a work in process. Focus areas:
 
 - Data model
 - Serialization
 - Rendering
-
-If anyone is interested in helping out, please let me know.
-
-For more details, see [TODO](todo.md)

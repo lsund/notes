@@ -3,8 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Main where
 
-import System.Posix.User
-import Control.Monad (when)
+import Control.Monad (unless)
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import Lens.Micro
 import Lens.Micro.TH
@@ -105,11 +104,12 @@ initialState =
 
 main :: IO ()
 main = do
-    exists <- doesFileExist dbfile
     createDirectoryIfMissing True dbdir
-    when (not exists) $  writeFile dbfile ""
+    exists <- doesFileExist dbfile
+    unless exists $  writeFile dbfile ""
     xs <- deserialize dbfile
     st <- M.defaultMain theApp $ initialState xs
+    writeFile dbfile ""
     serialize dbfile (st^.notes)
     putStrLn "Done"
 
