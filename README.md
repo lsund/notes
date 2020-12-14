@@ -11,7 +11,7 @@ that works without using the mouse.
 Alternatives to this that actually works are
 [VimWiki](https://github.com/vimwiki/vimwiki#key-bindings) or [Org
 Mode](https://orgmode.org/), but those are based and constrained by the usage
-of those editors.
+of those editors. Other alternatives ....?
 
 ## Design goals
 
