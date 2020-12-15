@@ -19,8 +19,8 @@ extractList :: Maybe [a] -> [a]
 extractList Nothing = []
 extractList (Just xs) = xs
 
-deserialize :: FilePath -> IO [Note]
+deserialize :: FilePath -> IO (Maybe [Note])
 deserialize file = do
     content <- readFile file
-    return $ (extractList . decode) (fromString content)
+    return $ decode (fromString content)
 

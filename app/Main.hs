@@ -18,6 +18,7 @@ import qualified Brick.Main as M
 import qualified Brick.Types as T
 import Brick.Util ( on)
 import Database (serialize, deserialize)
+import Data.List
 
 dbdir = "db"
 dbfile = "db/database.json"
@@ -50,14 +51,29 @@ editMode st = (st^.currentResource) == EditTitle || (st^.currentResource) == Edi
 viewMode :: St -> Bool
 viewMode st = (st^.currentResource) == View1
 
+activateOnId :: Integer -> [Note] -> [Note]
+activateOnId id  = map (\(Note id' _ title content) -> if id' == id then Note id' True title content else Note id' False title content)
+
+activate :: (Integer -> Integer) -> [Note] -> [Note]
+activate next xs =
+    let maxIndex = maximum $ map _id xs
+     in case find _active xs of
+      Nothing -> undefined
+      Just activeNote ->
+          let nextIndex = max (min (next (_id activeNote)) maxIndex) 0
+           in activateOnId nextIndex xs
+
+
 -------------------------------------------------------------------------------
 --  Event handler
 
 appEvent :: St -> T.BrickEvent Name e -> T.EventM Name (T.Next St)
 appEvent st (T.VtyEvent ev) | viewMode st =
-    case ev of
+     case ev of
         V.EvKey (V.KChar 'g') [V.MCtrl] -> M.halt st
-        V.EvKey (V.KChar 'n') [V.MCtrl] -> M.continue (st&currentResource %~ nextMode)
+        V.EvKey (V.KChar 'p') [V.MCtrl] -> M.continue (st&notes %~ activate pred)
+        V.EvKey (V.KChar 'n') [V.MCtrl] -> M.continue (st&notes %~ activate succ)
+        V.EvKey (V.KChar 'e') [V.MCtrl] -> M.continue (st&currentResource %~ nextMode)
         _  -> M.continue st
 appEvent st (T.VtyEvent ev) | editMode st =
     case ev of
@@ -65,7 +81,10 @@ appEvent st (T.VtyEvent ev) | editMode st =
         V.EvKey (V.KChar 's') [V.MCtrl] ->
             let title = (unlines $ E.getEditContents $ st^.editTitle)
                 content = (unlines $ E.getEditContents $ st^.editContent)
-             in M.continue ((st&currentResource %~ nextMode) &notes %~ (\xs -> Note title [content] : xs) )
+                withNextMode = st&currentResource%~nextMode
+                nextId = succ (maximum (map _id (st^.notes)))
+                withNewNoteAdded = withNextMode&notes%~(\notes -> Note nextId False title [content] : notes)
+             in M.continue withNewNoteAdded
         V.EvKey (V.KChar '\t') [] -> M.continue $ st & focusRing %~ F.focusNext
         V.EvKey V.KBackTab [] -> M.continue $ st & focusRing %~ F.focusPrev
         _ -> M.continue =<< case F.focusGetCurrent (st^.focusRing) of
@@ -96,11 +115,14 @@ theApp =
           }
 
 initialState :: [Note] -> St
-initialState =
+initialState (x : xs) =
     St (F.focusRing [EditTitle, EditContent])
        (E.editor EditTitle (Just 1) "")
        (E.editor EditContent Nothing "")
        View1
+       (x : xs)
+
+
 
 main :: IO ()
 main = do
@@ -108,9 +130,11 @@ main = do
     exists <- doesFileExist dbfile
     unless exists $  writeFile dbfile ""
     xs <- deserialize dbfile
-    print xs
-    st <- M.defaultMain theApp $ initialState xs
-    writeFile dbfile ""
-    serialize dbfile (st^.notes)
-    putStrLn "Done"
+    case xs of
+      Nothing -> putStrLn "Notes.hs: Could not deserialize json"
+      Just xs -> do
+        st <- M.defaultMain theApp $ initialState xs
+        writeFile dbfile ""
+        serialize dbfile (st^.notes)
+        putStrLn "Done"
 

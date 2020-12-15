@@ -31,12 +31,19 @@ import Brick.Widgets.Core
   )
 import Data.Aeson (FromJSON, ToJSON)
 
-data Note = Note { _title :: String, _content :: [String] }
+data Note = Note { _id :: Integer, _active :: Bool,  _title :: String, _content :: [String] }
     deriving (Generic, Show)
 
 instance FromJSON Note
 
 instance ToJSON Note
+
+instance Eq Note where
+    note1 == note2 = _id note1 == _id note2
+
+instance Ord Note where
+    note1 `compare` note2 = _id note1 `compare` _id note2
+
 
 makeLenses ''Note
 
@@ -49,9 +56,9 @@ styles =
     , ("from 'x'", BS.borderStyleFromChar 'x')
     ]
 
-borderMappings :: [(A.AttrName, V.Attr)]
-borderMappings =
-    [ (B.borderAttr, V.blue `on` V.black)
+borderMappings :: Bool -> [(A.AttrName, V.Attr)]
+borderMappings active =
+    [ (B.borderAttr, (if active then V.yellow else V.blue) `on` V.black)
     , ("title", fg V.cyan)
     ]
 
@@ -65,14 +72,14 @@ renderEditable focusRing titleEditor contentEditor =
                       (str "Content " <+> hLimit 30 (vLimit 5 content)))
 
 render :: Note -> Widget Name
-render x =
-    updateAttrMap (A.applyAttrMappings borderMappings) $
+render note =
+    updateAttrMap (A.applyAttrMappings (borderMappings (note^.active))) $
     withBorderStyle BS.ascii $
-    B.borderWithLabel (withAttr "title" $ str (x^.title)) $
+    B.borderWithLabel (withAttr "title" $ str (note^.title)) $
     hLimit 20 $
     vLimit 5 $
     C.center $
-    str (foldr (\x acc -> "* " <> x <> "\n" <> acc) "" (x^.content))
+    str (foldr (\note acc -> "* " <> note <> "\n" <> acc) "" (note^.content))
 
 renderMany :: [Note] -> Widget Name
 renderMany xs =
