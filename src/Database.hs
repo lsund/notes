@@ -9,13 +9,18 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Text (unpack)
 import Data.ByteString.Lazy (toStrict)
 
+notesToString :: [Note] -> String
+notesToString = unpack . decodeUtf8 . toStrict  . encode
+
 serialize :: FilePath -> [Note] -> IO ()
-serialize file xs = writeFile file (unpack (decodeUtf8 (toStrict  (encode xs))))
+serialize file xs = writeFile file (notesToString xs)
+
+extractList :: Maybe [a] -> [a]
+extractList Nothing = []
+extractList (Just xs) = xs
 
 deserialize :: FilePath -> IO [Note]
 deserialize file = do
     content <- readFile file
-    case decode (fromString content) of
-        Nothing -> return []
-        Just xs -> return xs
+    return $ (extractList . decode) (fromString content)
 
