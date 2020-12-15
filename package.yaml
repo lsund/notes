@@ -28,7 +28,8 @@ dependencies:
 - microlens-th
 - split
 - directory
-- dhall
+- aeson
+- bytestring
 
 library:
   source-dirs: src

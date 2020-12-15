@@ -8,7 +8,7 @@ import System.Directory (createDirectoryIfMissing, doesFileExist)
 import Lens.Micro
 import Lens.Micro.TH
 import qualified Note
-import Note (Note, Note(..), Content(..))
+import Note (Note, Note(..))
 import Shared (Name, Name(..))
 import qualified Graphics.Vty as V
 import qualified Brick.AttrMap as A
@@ -20,7 +20,7 @@ import Brick.Util ( on)
 import Database (serialize, deserialize)
 
 dbdir = "db"
-dbfile = "db/database.dhall"
+dbfile = "db/database.json"
 
 data St =
     St { _focusRing :: F.FocusRing Name
@@ -65,7 +65,7 @@ appEvent st (T.VtyEvent ev) | editMode st =
         V.EvKey (V.KChar 's') [V.MCtrl] ->
             let title = (unlines $ E.getEditContents $ st^.editTitle)
                 content = (unlines $ E.getEditContents $ st^.editContent)
-             in M.continue ((st&currentResource %~ nextMode) &notes %~ (\xs -> Note title (FreeText content) : xs) )
+             in M.continue ((st&currentResource %~ nextMode) &notes %~ (\xs -> Note title [content] : xs) )
         V.EvKey (V.KChar '\t') [] -> M.continue $ st & focusRing %~ F.focusNext
         V.EvKey V.KBackTab [] -> M.continue $ st & focusRing %~ F.focusPrev
         _ -> M.continue =<< case F.focusGetCurrent (st^.focusRing) of
@@ -108,6 +108,7 @@ main = do
     exists <- doesFileExist dbfile
     unless exists $  writeFile dbfile ""
     xs <- deserialize dbfile
+    print xs
     st <- M.defaultMain theApp $ initialState xs
     writeFile dbfile ""
     serialize dbfile (st^.notes)

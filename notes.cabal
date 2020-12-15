@@ -33,9 +33,10 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , brick
-    , dhall
+    , bytestring
     , directory
     , microlens
     , microlens-th
@@ -52,9 +53,10 @@ executable notes-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , brick
-    , dhall
+    , bytestring
     , directory
     , microlens
     , microlens-th
@@ -73,9 +75,10 @@ test-suite notes-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , brick
-    , dhall
+    , bytestring
     , directory
     , microlens
     , microlens-th

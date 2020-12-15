@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 module Note where
 
+import GHC.Generics
 import Shared (Name, Name(..))
 import Lens.Micro
 import Lens.Micro.TH
@@ -27,19 +29,16 @@ import Brick.Widgets.Core
   , withBorderStyle
   , str
   )
+import Data.Aeson (FromJSON, ToJSON)
 
-data Content = Bullets [String] | FreeText String
+data Note = Note { _title :: String, _content :: [String] }
+    deriving (Generic, Show)
 
-data Note = Note { _title :: String, _content :: Content }
+instance FromJSON Note
+
+instance ToJSON Note
 
 makeLenses ''Note
-
-instance Show Content where
-    show (Bullets xs) = concat xs
-    show (FreeText x) = x
-
-instance Show Note where
-    show (Note title content) = title <> "#" <> show content <> "#"
 
 styles :: [(Text, BS.BorderStyle)]
 styles =
@@ -73,7 +72,7 @@ render x =
     hLimit 20 $
     vLimit 5 $
     C.center $
-    str (show (x^.content))
+    str (foldr (\x acc -> "* " <> x <> "\n" <> acc) "" (x^.content))
 
 renderMany :: [Note] -> Widget Name
 renderMany xs =
