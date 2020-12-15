@@ -8,7 +8,7 @@ import System.Directory (createDirectoryIfMissing, doesFileExist)
 import Lens.Micro
 import Lens.Micro.TH
 import qualified Note
-import Note (Note, Note(..))
+import Note (Note, Note(..), Content(..))
 import Shared (Name, Name(..))
 import qualified Graphics.Vty as V
 import qualified Brick.AttrMap as A
@@ -20,7 +20,7 @@ import Brick.Util ( on)
 import Database (serialize, deserialize)
 
 dbdir = "db"
-dbfile = "db/notes-database.txt"
+dbfile = "db/database.dhall"
 
 data St =
     St { _focusRing :: F.FocusRing Name
@@ -56,16 +56,16 @@ viewMode st = (st^.currentResource) == View1
 appEvent :: St -> T.BrickEvent Name e -> T.EventM Name (T.Next St)
 appEvent st (T.VtyEvent ev) | viewMode st =
     case ev of
-        V.EvKey (V.KChar 'q') [] -> M.halt st
-        V.EvKey V.KEsc [] -> M.continue (st&currentResource %~ nextMode)
+        V.EvKey (V.KChar 'g') [V.MCtrl] -> M.halt st
+        V.EvKey (V.KChar 'n') [V.MCtrl] -> M.continue (st&currentResource %~ nextMode)
         _  -> M.continue st
 appEvent st (T.VtyEvent ev) | editMode st =
     case ev of
-        V.EvKey (V.KChar 'q') [] -> M.halt st
-        V.EvKey V.KEsc [] ->
+        V.EvKey (V.KChar 'g') [V.MCtrl] -> M.continue (st&currentResource %~ nextMode)
+        V.EvKey (V.KChar 's') [V.MCtrl] ->
             let title = (unlines $ E.getEditContents $ st^.editTitle)
                 content = (unlines $ E.getEditContents $ st^.editContent)
-             in M.continue ((st&currentResource %~ nextMode) &notes %~ (\xs -> Note title content : xs) )
+             in M.continue ((st&currentResource %~ nextMode) &notes %~ (\xs -> Note title (FreeText content) : xs) )
         V.EvKey (V.KChar '\t') [] -> M.continue $ st & focusRing %~ F.focusNext
         V.EvKey V.KBackTab [] -> M.continue $ st & focusRing %~ F.focusPrev
         _ -> M.continue =<< case F.focusGetCurrent (st^.focusRing) of

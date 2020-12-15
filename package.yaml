@@ -28,6 +28,7 @@ dependencies:
 - microlens-th
 - split
 - directory
+- dhall
 
 library:
   source-dirs: src

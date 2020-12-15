@@ -28,12 +28,18 @@ import Brick.Widgets.Core
   , str
   )
 
-data Note = Note { _title :: String, _content :: String }
+data Content = Bullets [String] | FreeText String
+
+data Note = Note { _title :: String, _content :: Content }
 
 makeLenses ''Note
 
+instance Show Content where
+    show (Bullets xs) = concat xs
+    show (FreeText x) = x
+
 instance Show Note where
-    show (Note title content) = title <> "#" <> content <> "#"
+    show (Note title content) = title <> "#" <> show content <> "#"
 
 styles :: [(Text, BS.BorderStyle)]
 styles =
@@ -55,7 +61,7 @@ renderEditable focusRing titleEditor contentEditor =
     let title = F.withFocusRing focusRing (E.renderEditor (str . unlines)) titleEditor
         content = F.withFocusRing focusRing (E.renderEditor (str . unlines)) contentEditor
      in
-        B.hBorderWithLabel (str "Hit 'Esc' to save and 'Tab' to switch focus")
+        B.hBorderWithLabel (str "Hit 'C-s' to save and 'Tab' to switch focus")
         <=> C.center (str "Title   " <+> hLimit 30 (vLimit 5 title) <=>
                       (str "Content " <+> hLimit 30 (vLimit 5 content)))
 
@@ -67,11 +73,11 @@ render x =
     hLimit 20 $
     vLimit 5 $
     C.center $
-    str (x^.content)
+    str (show (x^.content))
 
 renderMany :: [Note] -> Widget Name
 renderMany xs =
     B.hBorderWithLabel (str "Existing notes")
     <=> hBox (map render xs)
     <=> B.hBorderWithLabel (str "New note")
-    <=> C.center (str "Hit 'Esc' to create a new note, or 'q' to save and quit")
+    <=> C.center (str "Hit 'C-n' to create a new note, or 'C-g' to save and quit")

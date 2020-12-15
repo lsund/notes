@@ -35,6 +35,7 @@ library
   build-depends:
       base >=4.7 && <5
     , brick
+    , dhall
     , directory
     , microlens
     , microlens-th
@@ -53,6 +54,7 @@ executable notes-exe
   build-depends:
       base >=4.7 && <5
     , brick
+    , dhall
     , directory
     , microlens
     , microlens-th
@@ -73,6 +75,7 @@ test-suite notes-test
   build-depends:
       base >=4.7 && <5
     , brick
+    , dhall
     , directory
     , microlens
     , microlens-th
