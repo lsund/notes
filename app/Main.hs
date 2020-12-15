@@ -52,7 +52,7 @@ viewMode :: St -> Bool
 viewMode st = (st^.currentResource) == View1
 
 activateOnId :: Integer -> [Note] -> [Note]
-activateOnId id  = map (\(Note id' _ title content) -> if id' == id then Note id' True title content else Note id' False title content)
+activateOnId id  = map (\note -> if _id note == id then note { _active = True } else note { _active = False })
 
 activate :: (Integer -> Integer) -> [Note] -> [Note]
 activate next xs =
