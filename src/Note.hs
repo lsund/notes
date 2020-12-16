@@ -20,7 +20,6 @@ import qualified Graphics.Vty as V
 import Brick.Util (fg, on)
 import Brick.Widgets.Core
   ( (<=>)
-  , (<+>)
   , withAttr
   , vLimit
   , hLimit
@@ -31,7 +30,7 @@ import Brick.Widgets.Core
   )
 import Data.Aeson (FromJSON, ToJSON)
 
-data Note = Note { _id :: Integer, _active :: Bool,  _title :: String, _content :: [String] }
+data Note = Note { _id :: Integer, _active :: Bool, _locked :: Bool,  _title :: String, _content :: [String] }
     deriving (Generic, Show)
 
 instance FromJSON Note
@@ -62,28 +61,29 @@ borderMappings active =
     , ("title", fg V.cyan)
     ]
 
-renderEditable :: F.FocusRing Name -> E.Editor String Name -> E.Editor String Name -> Widget Name
-renderEditable focusRing titleEditor contentEditor =
+render :: Note -> Widget Name -> Widget Name
+render note content =
+    updateAttrMap (A.applyAttrMappings (borderMappings (note^.active))) $
+    withBorderStyle BS.ascii $
+    B.borderWithLabel (withAttr "title" $ str (note^.title)) content
+
+renderUnlocked :: F.FocusRing Name -> E.Editor String Name -> E.Editor String Name -> Widget Name
+renderUnlocked focusRing titleEditor contentEditor =
     let title = F.withFocusRing focusRing (E.renderEditor (str . unlines)) titleEditor
         content = F.withFocusRing focusRing (E.renderEditor (str . unlines)) contentEditor
      in
-        B.hBorderWithLabel (str "Hit 'C-s' to save and 'Tab' to switch focus")
-        <=> C.center (str "Title   " <+> hLimit 30 (vLimit 5 title) <=>
-                      (str "Content " <+> hLimit 30 (vLimit 5 content)))
+        (hLimit 30 (vLimit 5 title) <=> hLimit 30 (vLimit 5 content))
 
-render :: Note -> Widget Name
-render note =
-    updateAttrMap (A.applyAttrMappings (borderMappings (note^.active))) $
-    withBorderStyle BS.ascii $
-    B.borderWithLabel (withAttr "title" $ str (note^.title)) $
+renderLocked :: Note -> Widget Name
+renderLocked note =
     hLimit 20 $
     vLimit 5 $
     C.center $
     str (foldr (\note acc -> "* " <> note <> "\n" <> acc) "" (note^.content))
 
-renderMany :: [Note] -> Widget Name
-renderMany xs =
-    B.hBorderWithLabel (str "Existing notes")
-    <=> hBox (map render xs)
-    <=> B.hBorderWithLabel (str "New note")
-    <=> C.center (str "Hit 'C-n' to create a new note, or 'C-g' to save and quit")
+renderMany :: F.FocusRing Name -> E.Editor String Name -> E.Editor String Name -> [Note] -> Widget Name
+renderMany focusRing editTitle editContent notes =
+    let unlockedWidget = renderUnlocked focusRing editTitle editContent
+    in
+        B.hBorderWithLabel (str "Existing notes")
+        <=> hBox (map (\note -> if _locked note then render note (renderLocked note)  else render note unlockedWidget) notes)

@@ -30,6 +30,7 @@ dependencies:
 - directory
 - aeson
 - bytestring
+- pretty-simple
 
 library:
   source-dirs: src

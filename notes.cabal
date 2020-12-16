@@ -40,6 +40,7 @@ library
     , directory
     , microlens
     , microlens-th
+    , pretty-simple
     , split
     , text
     , vty
@@ -61,6 +62,7 @@ executable notes-exe
     , microlens
     , microlens-th
     , notes
+    , pretty-simple
     , split
     , text
     , vty
@@ -83,6 +85,7 @@ test-suite notes-test
     , microlens
     , microlens-th
     , notes
+    , pretty-simple
     , split
     , text
     , vty

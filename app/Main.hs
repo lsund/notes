@@ -16,9 +16,16 @@ import qualified Brick.Focus as F
 import qualified Brick.Widgets.Edit as E
 import qualified Brick.Main as M
 import qualified Brick.Types as T
+import qualified Brick.Widgets.Border as B
+import qualified Brick.Widgets.Center as C
+import Brick.Widgets.Core
+  ( (<=>), str, txt )
 import Brick.Util ( on)
 import Database (serialize, deserialize)
 import Data.List
+import Text.Pretty.Simple (pString)
+import Data.Text.Lazy (toStrict)
+
 
 dbdir = "db"
 dbfile = "db/database.json"
@@ -35,10 +42,15 @@ makeLenses ''St
 
 -------------------------------------------------------------------------------
 -- Rendering
+--
+
+prettyRender :: [Note] -> T.Widget Name
+prettyRender = txt . toStrict . pString . show
 
 draw :: St -> [T.Widget Name]
-draw st | viewMode st = [Note.renderMany (st^.notes)]
-draw st | editMode st = [Note.renderEditable (st^.focusRing) (st^.editTitle) (st^.editContent)]
+draw st = [Note.renderMany (st^.focusRing) (st^.editTitle) (st^.editContent) (st^.notes)
+            <=> B.hBorderWithLabel (str "State")
+            <=> C.center (prettyRender (st^.notes))]
 
 
 nextMode :: Name -> Name
@@ -63,6 +75,11 @@ activate next xs =
           let nextIndex = max (min (next (_id activeNote)) maxIndex) 0
            in activateOnId nextIndex xs
 
+unlockActive :: [Note] -> [Note]
+unlockActive = map (\note -> if _active note then note { _locked = False } else note)
+
+lockActive :: [Note] -> [Note]
+lockActive = map (\note -> if _active note then note { _locked = True } else note)
 
 -------------------------------------------------------------------------------
 --  Event handler
@@ -71,9 +88,12 @@ appEvent :: St -> T.BrickEvent Name e -> T.EventM Name (T.Next St)
 appEvent st (T.VtyEvent ev) | viewMode st =
      case ev of
         V.EvKey (V.KChar 'g') [V.MCtrl] -> M.halt st
+        V.EvKey (V.KChar 'c') [V.MCtrl] -> M.halt st
+        V.EvKey (V.KChar 'd') [V.MCtrl] -> M.halt st
         V.EvKey (V.KChar 'p') [V.MCtrl] -> M.continue (st&notes %~ activate pred)
         V.EvKey (V.KChar 'n') [V.MCtrl] -> M.continue (st&notes %~ activate succ)
-        V.EvKey (V.KChar 'e') [V.MCtrl] -> M.continue (st&currentResource %~ nextMode)
+        V.EvKey (V.KChar 'e') [V.MCtrl] -> M.continue (st&notes %~ unlockActive)
+        V.EvKey (V.KChar 's') [V.MCtrl] -> M.continue (st&notes %~ lockActive)
         _  -> M.continue st
 appEvent st (T.VtyEvent ev) | editMode st =
     case ev of
@@ -83,7 +103,7 @@ appEvent st (T.VtyEvent ev) | editMode st =
                 content = (unlines $ E.getEditContents $ st^.editContent)
                 withNextMode = st&currentResource%~nextMode
                 nextId = succ (maximum (map _id (st^.notes)))
-                withNewNoteAdded = withNextMode&notes%~(\notes -> Note nextId False title [content] : notes)
+                withNewNoteAdded = withNextMode&notes%~(\notes -> Note nextId False True title [content] : notes)
              in M.continue withNewNoteAdded
         V.EvKey (V.KChar '\t') [] -> M.continue $ st & focusRing %~ F.focusNext
         V.EvKey V.KBackTab [] -> M.continue $ st & focusRing %~ F.focusPrev
@@ -117,8 +137,8 @@ theApp =
 initialState :: [Note] -> St
 initialState (x : xs) =
     St (F.focusRing [EditTitle, EditContent])
-       (E.editor EditTitle (Just 1) "")
-       (E.editor EditContent Nothing "")
+       (E.editor EditTitle (Just 1) "") -- initialize editors
+       (E.editor EditContent Nothing "") -- Initialize editors
        View1
        (x : xs)
 
