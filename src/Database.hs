@@ -1,26 +1,42 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE RankNTypes #-}
 module Database where
 
-import Note (Note(..))
-import Data.Aeson (decode, encode)
+import qualified Note as N
 import Data.String (fromString)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text (unpack)
 import Data.ByteString.Lazy (toStrict)
+import Data.Aeson (FromJSON, ToJSON, decode, encode)
+import GHC.Generics
+import Data.Text (Text, unlines)
 
-notesToString :: [Note] -> String
-notesToString = unpack . decodeUtf8 . toStrict  . encode
+data Note = Note { _id :: Integer, _active :: Bool, _locked :: Bool,  _title :: Text, _content :: [Text] }
+    deriving (Generic, Show)
 
-serialize :: FilePath -> [Note] -> IO ()
+instance FromJSON Note
+
+instance ToJSON Note
+
+internalize :: N.Note -> Note
+internalize (N.Note id active locked title content) = Note id active locked title content
+
+notesToString :: [N.Note] -> String
+notesToString = unpack . decodeUtf8 . toStrict  . encode . map internalize
+
+serialize :: FilePath -> [N.Note] -> IO ()
 serialize file xs = writeFile file (notesToString xs)
 
 extractList :: Maybe [a] -> [a]
 extractList Nothing = []
 extractList (Just xs) = xs
 
-deserialize :: FilePath -> IO (Maybe [Note])
+externalize :: Note -> N.Note
+externalize (Note id active locked title content) = N.Note id active locked title content
+
+deserialize :: FilePath -> IO (Maybe [N.Note])
 deserialize file = do
     content <- readFile file
-    return $ decode (fromString content)
+    return $ map externalize <$> decode (fromString content)
 

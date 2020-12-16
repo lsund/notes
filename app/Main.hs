@@ -3,6 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Main where
 
+import Prelude hiding (unlines)
 import Control.Monad (unless)
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import Lens.Micro
@@ -22,9 +23,10 @@ import Brick.Widgets.Core
   ( (<=>), str, txt )
 import Brick.Util ( on)
 import Database (serialize, deserialize)
-import Data.List
+import Data.List hiding (unlines)
 import Text.Pretty.Simple (pString)
 import Data.Text.Lazy (toStrict)
+import Data.Text (Text, unlines)
 
 
 dbdir = "db"
@@ -32,8 +34,8 @@ dbfile = "db/database.json"
 
 data St =
     St { _focusRing :: F.FocusRing Name
-       , _editTitle :: E.Editor String Name
-       , _editContent :: E.Editor String Name
+       , _editTitle :: E.Editor Text Name
+       , _editContent :: E.Editor Text Name
        , _currentResource :: Name
        , _notes :: [Note]
        }
