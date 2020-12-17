@@ -1,4 +1,4 @@
-# Notes WIP
+# Notes.hs
 
 This is a notetaking program built inspired by
 [Tiddlywiki](https://tiddlywiki.com/) and built with
