@@ -27,7 +27,6 @@ library
   exposed-modules:
       Database
       Note
-      Shared
   other-modules:
       Paths_notes
   hs-source-dirs:
