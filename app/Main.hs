@@ -10,7 +10,7 @@ import System.Directory (createDirectoryIfMissing, doesFileExist)
 import Lens.Micro
 import Lens.Micro.TH
 import qualified Note
-import Note (Note, Note(..), titleEditor)
+import Note (Note, Note(..), Field(..))
 import qualified Graphics.Vty as V
 import qualified Brick.AttrMap as A
 import qualified Brick.Focus as F
@@ -57,6 +57,9 @@ draw st = [Note.renderMany (st^.focusRing) (st^.editContent) (st^.notes)
             <=> B.hBorderWithLabel (str "State")
             <=> C.center (prettyRender (st^.notes))]
 
+-------------------------------------------------------------------------------
+--  Event handler
+
 activateOnId :: Integer -> [Note] -> [Note]
 activateOnId id  = map (\note -> if _id note == id then note { _active = True } else note { _active = False })
 
@@ -75,8 +78,15 @@ unlockActive = map (\note -> if _active note then note { _locked = False } else 
 lockActive :: [Note] -> [Note]
 lockActive = map (\note -> if _active note then note { _locked = True } else note)
 
--------------------------------------------------------------------------------
---  Event handler
+updateUnlockedEditor :: Functor f => (E.Editor Text Id -> f (E.Editor Text Id)) -> St -> f St
+updateUnlockedEditor f st =
+    let xs = (st ^. notes)
+        unlockedNote = fromJust $ find (not . _locked) xs
+     in (\editor' -> st {_notes = map (updateEditor editor') xs }) <$> f (_editor (_title unlockedNote))
+        where updateEditor ed note | (not . _locked) note = note { _title = (_title note) { _editor = ed } }
+              updateEditor ed note = note
+
+-- TODO play around with lenses to get a function that updates the correct node
 
 appEvent :: St -> T.BrickEvent Id e -> T.EventM Id (T.Next St)
 appEvent st (T.VtyEvent ev)  =
@@ -84,26 +94,12 @@ appEvent st (T.VtyEvent ev)  =
         V.EvKey (V.KChar 'g') [V.MCtrl] -> M.halt st
         V.EvKey (V.KChar 'c') [V.MCtrl] -> M.halt st
         V.EvKey (V.KChar 'd') [V.MCtrl] -> M.halt st
-        V.EvKey (V.KChar 'p') [V.MCtrl] -> M.continue (st&notes %~ activate pred)
-        V.EvKey (V.KChar 'n') [V.MCtrl] -> M.continue (st&notes %~ activate succ)
-        V.EvKey (V.KChar 'e') [V.MCtrl] -> M.continue (st&notes %~ unlockActive)
-        V.EvKey (V.KChar 's') [V.MCtrl] -> M.continue (st&notes %~ lockActive)
-        -- FIXME
-        _ -> M.continue =<< case F.focusGetCurrent (st^.focusRing) of
-        -- If one node is unlocked:
-        -- editContent :: (st -> st)
-        -- 1. get that node, get its editor `editTitle`
-                Just id ->
-                    let handleEvent lens st' =
-                            let unlockedNote = find (not . _locked) (st'^.notes)
-                                editor = fromJust $ (titleEditor <$> unlockedNote) :: (E.Editor Text Id)
-                            in editor
-                    in T.handleEventLensed st handleEvent E.handleEditorEvent ev
-                Nothing -> T.handleEventLensed st editContent E.handleEditorEvent ev
-        --- Otherwise continue with state unchanged
+        V.EvKey (V.KChar 'p') [V.MCtrl] -> M.continue (st & notes %~ activate pred)
+        V.EvKey (V.KChar 'n') [V.MCtrl] -> M.continue (st & notes %~ activate succ)
+        V.EvKey (V.KChar 'e') [V.MCtrl] -> M.continue (st & notes %~ unlockActive)
+        V.EvKey (V.KChar 's') [V.MCtrl] -> M.continue (st & notes %~ lockActive)
+        _ -> M.continue =<< T.handleEventLensed st updateUnlockedEditor E.handleEditorEvent ev
 appEvent st _ = M.continue st
-
--- _ -> M.continue =<< case F.focusGetCurrent (st^.focusRing) of
 
 -- V.EvKey (V.KChar 'g') [V.MCtrl] -> M.continue (st&currentResource %~ nextMode)
 -- V.EvKey (V.KChar 's') [V.MCtrl] ->

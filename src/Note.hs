@@ -89,6 +89,3 @@ renderMany focusRing editContent notes =
     in
         B.hBorderWithLabel (txt "Existing notes")
         <=> hBox (map (\note -> if _locked note then render note (renderLocked note)  else render note (unlockedWidget note)) notes)
-
-titleEditor :: Note -> E.Editor Text Id
-titleEditor note = note ^. (title . editor)
