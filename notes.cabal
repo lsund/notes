@@ -45,7 +45,7 @@ library
     , vty
   default-language: Haskell2010
 
-executable notes-exe
+executable notes
   main-is: Main.hs
   other-modules:
       Paths_notes

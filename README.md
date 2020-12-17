@@ -1,30 +1,29 @@
 # Notes WIP
 
-This is a notetaking program built on [brick](https://github.com/jtdaugherty/brick),
-inspired by [Tiddlywiki](https://tiddlywiki.com/).
+This is a notetaking program built inspired by
+[Tiddlywiki](https://tiddlywiki.com/) and built with
+[brick](https://github.com/jtdaugherty/brick).
 
-I wanted a note taking program that has the same basic functionality as
-tiddlywiki (associative, non-linear notetaking with links as the main
-construct), but as I prefer the command line, the goal is to have something
-that works without using the mouse.
+I started using tiddlywiki and liked it because of its lightweight feel and
+simple way of linking notes.
 
-Alternatives to this that actually works are
-[VimWiki](https://github.com/vimwiki/vimwiki#key-bindings) or [Org
-Mode](https://orgmode.org/), but those are based and constrained by the usage
-of those editors. Other alternatives ....?
+However, it being a web application means a lot of clicking. Furthermore, its
+UI doesn't use any fancy styling or other capabilities that comes with the
+browser environment. It seemed like the important features of tiddlywiki could
+be implemented in a terminal environment. Because I am more confortable on the
+command line and in text editors, I started to do this in this repository.
 
-## Current state
-
-Can add and store and display notes. Not much more.
+Rendering is always one of the harder parts of any program that has a UI.
+Therefore, it was crucial that I found a good, reliable library to do this in
+Brick.
 
 ## Design goals
 
-* It is a terminal user interface only. There are plenty of note-taking
-  applications with GUI's.
+* It has a terminal user interface
 
 * It is not a command line utility. No flags, no piping with other programs.
 
-* It stores data locally.
+* It stores data locally in a file.
 
 * It has a single binary, no dependencies.
 
@@ -39,10 +38,32 @@ Can add and store and display notes. Not much more.
 E.g.
 ```
 stack install
-~/.local/bin/notes-exe
+~/.local/bin/notes
 ```
+## Current status [WIP]
 
-## WIP
+* Can persist and read whole state onto disk.
 
-This is a work in process. To have a POC, we have to properly design data
-model, serialization and rendering.
+* Can render notes
+
+* Can cycle between notes
+
+* Can update the content of notes
+
+## Todo
+
+* Create new notes
+
+* Bullet lists
+
+* Links
+
+* Tags
+
+## Alternatives to Notes.hs
+
+Alternatives to this that actually works are
+[VimWiki](https://github.com/vimwiki/vimwiki#key-bindings) or [Org
+Mode](https://orgmode.org/), but those are based and constrained by the usage
+of those editors.
+
