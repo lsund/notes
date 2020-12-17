@@ -4,7 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Note where
 
-import Prelude hiding (unlines)
+import Prelude hiding (unlines, id)
 import GHC.Generics
 import Lens.Micro
 import Lens.Micro.TH
@@ -34,7 +34,7 @@ type Id = Integer
 data Field = Field { _fcontent :: Text, _editor :: E.Editor Text Id }
     deriving (Show)
 
-data Note = Note { _id :: Integer, _active :: Bool, _locked :: Bool,  _title :: Field, _content :: [Text] }
+data Note = Note { _id :: Integer, _active :: Bool, _locked :: Bool,  _title :: Field, _content :: Field }
     deriving (Generic, Show)
 
 instance Eq Note where
@@ -62,30 +62,31 @@ borderMappings active =
     , ("title", fg V.cyan)
     ]
 
-render :: Note -> Widget Id -> Widget Id
-render note content =
-    updateAttrMap (A.applyAttrMappings (borderMappings (note^.active))) $
+render :: F.FocusRing Id ->  Note -> Widget Id -> Widget Id
+render foc note content =
+    let active =  (== Just (note ^. id)) (F.focusGetCurrent foc)
+     in updateAttrMap (A.applyAttrMappings (borderMappings active)) $
     withBorderStyle BS.ascii $
-    B.borderWithLabel (withAttr "title" $ txt (note^.title^.fcontent)) content
+    B.borderWithLabel (withAttr "title" $ txt (note ^. (title . fcontent))) content
 
-renderUnlocked :: F.FocusRing Id -> E.Editor Text Id -> Note -> Widget Id
-renderUnlocked focusRing contentEditor note =
-    -- let title = F.withFocusRing focusRing (E.renderEditor (txt . unlines)) (_editor (_title note))
-    let titleEditor = F.withFocusRing focusRing (E.renderEditor (txt . unlines)) (note^. (title . editor))
-        content = F.withFocusRing focusRing (E.renderEditor (txt . unlines)) contentEditor
+renderUnlocked :: F.FocusRing Id -> Note -> Widget Id
+renderUnlocked foc note =
+    let _titleEditor = F.withFocusRing foc (E.renderEditor (txt . unlines)) (note ^. (title . editor))  -- TODO
+        contentEditor = F.withFocusRing foc (E.renderEditor (txt . unlines)) (note ^. (content . editor))
      in
-        (hLimit 30 (vLimit 5 titleEditor) <=> hLimit 30 (vLimit 5 content))
+        hLimit 30 (vLimit 5 contentEditor)
 
-renderLocked :: Note -> Widget Id
-renderLocked note =
+renderLocked :: F.FocusRing Id ->Note -> Widget Id
+renderLocked foc note =
     hLimit 20 $
     vLimit 5 $
     C.center $
-    txt (foldr (\note acc -> "* " <> note <> "\n" <> acc) "" (note^.content))
+        txt (note^.(content . fcontent))
+    -- txt (foldr (\note acc -> "* " <> note <> "\n" <> acc) "" (note^.content))
 
-renderMany :: F.FocusRing Id -> E.Editor Text Id -> [Note] -> Widget Id
-renderMany focusRing editContent notes =
-    let unlockedWidget = renderUnlocked focusRing editContent
+renderMany :: F.FocusRing Id -> [Note] -> Widget Id
+renderMany foc notes =
+    let unlockedWidget = renderUnlocked foc
     in
         B.hBorderWithLabel (txt "Existing notes")
-        <=> hBox (map (\note -> if _locked note then render note (renderLocked note)  else render note (unlockedWidget note)) notes)
+        <=> hBox (map (\note -> if _locked note then render foc note (renderLocked foc note)  else render foc note (unlockedWidget note)) notes)
