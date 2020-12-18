@@ -86,7 +86,7 @@ renderLocked foc note =
 
 renderMany :: F.FocusRing Id -> [Note] -> Widget Id
 renderMany foc notes =
-    let unlockedWidget = renderUnlocked foc
-    in
-        B.hBorderWithLabel (txt "Existing notes")
-        <=> hBox (map (\note -> if _locked note then render foc note (renderLocked foc note)  else render foc note (unlockedWidget note)) notes)
+    B.hBorderWithLabel (txt "Existing notes")
+    <=> hBox (map
+                (\note -> if _locked note then render foc note (renderLocked foc note)  else render foc note (renderUnlocked foc note))
+                notes)
