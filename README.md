@@ -12,21 +12,20 @@ particularly like:
   mouse-action. This can be difficult if you are working on a laptop and don't
   have access to a mouse.
 
-2. The UI that comes out of the box is not that good. There doesn't seem to be a
-  way to sort notes that you have open except for closing them and reopening
-  them in a different order. There are animations, but they are slow and only
-  make things difficult. The look and feel isn't that great, and bloated with
-  a lot of options that isn't directly helpful to the essential process of
-  taking and linking notes.
+2. The UI that comes out of the box is not that good. There is no way to sort
+   open nodes  except for closing them and reopening them in a different order.
+   There are animations that make the interaction slower. The look and feel
+   isn't that great, and bloated with a lot of options that isn't directly
+   helpful to the essential process of taking and linking notes.
 
-3. It has the feel of a SPA and it stores its state in the DOM. To use
-  tiddlywiki, you have to figure out a way to eventually persisting these
-  changes. I tried a simple WebDAV implementation for this. If I accidentally
-  refresh the page, or if the web-server goes down while tiddlywiki is in a
-  non-saved state, I lose my changes. Furthermore, I could not figure out a way
-  to automatically update links in other tiddlers, if I change the name of a
-  tiddler, meaning that if I update the name of a tiddler, I potentially break
-  multiple links in other tiddlers and have to verify this manually every time.
+3. It has the feel of a SPA, but it has no dedicated backend. Instead, it
+   stores its state in the DOM and it is up to you to figure out how to persist
+   the changes to disk. You can use a Node implementation that TW provides, or
+   any WebDAV. With my WebDAV implementation, I could not figure out a way to
+   automatically update links when their corresponding tiddler names changed.
+   As a result, anytime I update the name of a tiddler, I potentially break
+   multiple links in other tiddlers and have to verify this manually every
+   time.
 
 ## What it is
 
