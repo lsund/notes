@@ -4,31 +4,46 @@ This is a notetaking program built inspired by
 [Tiddlywiki](https://tiddlywiki.com/) and built with
 [Brick](https://github.com/jtdaugherty/brick).
 
-Tiddlywiki is nice because of its lightweight feel and uncomplicated way of
-taking and linking notes. However, it being a web application means a lot of
-clicking. Furthermore, its UI doesn't use any fancy browser capabilities (at
-least not out of the box) that couldn't be implemented in a terminal
-environment. Because I am more confortable on the command line and in text
-editors, I started this repository as an  implementation that would leverage
-the core features of tiddlywiki in a terminal environment.
+I like Tiddlywiki because of its lightweight feel and uncomplicated way of
+taking and linking notes. However, there are some aspects that I do not
+particularly like:
 
-Rendering is always one of the harder parts of any program that has a UI.
-Furthermore, terminal input is difficult, so we delegate that responsibility to
-Brick, a library that seems to approach these issues well.
+1. Due to it being a web-application, there is a lot of clicking and other
+  mouse-action. This can be difficult if you are working on a laptop and don't
+  have access to a mouse.
 
-## Design goals
+2. The UI that comes out of the box is not that good. There doesn't seem to be a
+  way to sort notes that you have open except for closing them and reopening
+  them in a different order. There are animations, but they are slow and only
+  make things difficult. The look and feel isn't that great, and bloated with
+  a lot of options that isn't directly helpful to the essential process of
+  taking and linking notes.
 
-* It is simple and easy to creating new notes and linking notes.
+3. It has the feel of a SPA and it stores its state in the DOM. To use
+  tiddlywiki, you have to figure out a way to eventually persisting these
+  changes. I tried a simple WebDAV implementation for this. If I accidentally
+  refresh the page, or if the web-server goes down while tiddlywiki is in a
+  non-saved state, I lose my changes.
 
-* It is easy to view links and follow links.
+## What it is
 
-* It is terminal native: it leverages colors, formatting and other modern terminal capabilities.
+This is an implementation of a note-taking program that addresses the above
+points and tries to improve on them. The purpose is to quickly and easily take
+and link notes in a bi-directional, non-linear way.
 
-* It is not a command line utility. No flags, no piping with other programs.
+1. As I am more confortable on the command line and text editors, I decided to
+   implement the program in a terminal environment. Terminal input and
+   terminal rendering is hard, so we use Brick that seems to approach these
+   problems in a good way. By working in a terminal environment, we eliminate
+   the mouse completely and are free to choose our hotkeys as we want.
 
-* It stores data locally in a file in a common format.
+2. The program uses the terminal as interface, which has a universal look and
+   feel that everybody using it is familiar with. The color and formatting
+   options that modern terminals handle are enough for our purpose. No
+   animations, no redundant, distracting options.
 
-* It has a single binary, no dependencies.
+3. The entire state can be persisted to a file, and this is done locally in a
+   common file format. It has a single binary and no external dependencies.
 
 ## Installing and Running
 
