@@ -2,44 +2,42 @@
 
 This is a notetaking program built inspired by
 [Tiddlywiki](https://tiddlywiki.com/) and built with
-[brick](https://github.com/jtdaugherty/brick).
+[Brick](https://github.com/jtdaugherty/brick).
 
-I started using tiddlywiki and liked it because of its lightweight feel and
-simple way of linking notes.
-
-However, it being a web application means a lot of clicking. Furthermore, its
-UI doesn't use any fancy styling or other capabilities that comes with the
-browser environment. It seemed like the important features of tiddlywiki could
-be implemented in a terminal environment. Because I am more confortable on the
-command line and in text editors, I started to do this in this repository.
+Tiddlywiki is nice because of its lightweight feel and uncomplicated way of
+taking and linking notes. However, it being a web application means a lot of
+clicking. Furthermore, its UI doesn't use any fancy browser capabilities (at
+least not out of the box) that couldn't be implemented in a terminal
+environment. Because I am more confortable on the command line and in text
+editors, I started this repository as an  implementation that would leverage
+the core features of tiddlywiki in a terminal environment.
 
 Rendering is always one of the harder parts of any program that has a UI.
-Therefore, it was crucial that I found a good, reliable library to do this in
-Brick.
+Furthermore, terminal input is difficult, so we delegate that responsibility to
+Brick, a library that seems to approach these issues well.
 
 ## Design goals
 
-* It has a terminal user interface
+* It is simple and easy to creating new notes and linking notes.
+
+* It is easy to view links and follow links.
+
+* It is terminal native: it leverages colors, formatting and other modern terminal capabilities.
 
 * It is not a command line utility. No flags, no piping with other programs.
 
-* It stores data locally in a file.
+* It stores data locally in a file in a common format.
 
 * It has a single binary, no dependencies.
 
-* It is frictionless creating new and linking notes.
-
-* It is easy to view notes, related notes and all notes.
-
-* It leverages colors, formatting and other modern terminal capabilities.
-
 ## Installing and Running
 
-E.g.
+I use stack for development. To create an executable:
 ```
 stack install
 ~/.local/bin/notes
 ```
+
 ## Current status [WIP]
 
 * Can persist and read whole state onto disk.
