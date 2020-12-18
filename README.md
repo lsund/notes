@@ -23,7 +23,10 @@ particularly like:
   tiddlywiki, you have to figure out a way to eventually persisting these
   changes. I tried a simple WebDAV implementation for this. If I accidentally
   refresh the page, or if the web-server goes down while tiddlywiki is in a
-  non-saved state, I lose my changes.
+  non-saved state, I lose my changes. Furthermore, I could not figure out a way
+  to automatically update links in other tiddlers, if I change the name of a
+  tiddler, meaning that if I update the name of a tiddler, I potentially break
+  multiple links in other tiddlers and have to verify this manually every time.
 
 ## What it is
 
@@ -43,7 +46,10 @@ and link notes in a bi-directional, non-linear way.
    animations, no redundant, distracting options.
 
 3. The entire state can be persisted to a file, and this is done locally in a
-   common file format. It has a single binary and no external dependencies.
+   common file format. It has a single binary and no external dependencies. A
+   note has a unique ID, and changing its name does not change any references
+   to it. On the other hand, changing the name of a note updates the names of
+   all links in other notes.
 
 ## Installing and Running
 
