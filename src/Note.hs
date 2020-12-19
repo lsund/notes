@@ -4,8 +4,11 @@
 {-# LANGUAGE RankNTypes #-}
 module Note where
 
+import Prim
 import Prelude hiding (unlines, id)
 import GHC.Generics
+import Field (Field(..))
+import qualified Field as F
 import Lens.Micro
 import Lens.Micro.TH
 import Brick.Types (Widget)
@@ -29,11 +32,6 @@ import Brick.Widgets.Core
   , txt
   )
 
-type Id = Integer
-
-data Field = Field { _fcontent :: Text, _editor :: E.Editor Text Id }
-    deriving (Show)
-
 data Note = Note { _id :: Integer, _active :: Bool, _locked :: Bool,  _title :: Field, _content :: Field }
     deriving (Generic, Show)
 
@@ -45,7 +43,6 @@ instance Ord Note where
 
 
 makeLenses ''Note
-makeLenses ''Field
 
 styles :: [(Text, BS.BorderStyle)]
 styles =
@@ -67,12 +64,12 @@ render foc note content =
     let active =  (== Just (note ^. id)) (F.focusGetCurrent foc)
      in updateAttrMap (A.applyAttrMappings (borderMappings active)) $
     withBorderStyle BS.ascii $
-    B.borderWithLabel (withAttr "title" $ txt (note ^. (title . fcontent))) content
+    B.borderWithLabel (withAttr "title" $ txt (note ^. (title . F.content))) content
 
 renderUnlocked :: F.FocusRing Id -> Note -> Widget Id
 renderUnlocked foc note =
-    let _titleEditor = F.withFocusRing foc (E.renderEditor (txt . unlines)) (note ^. (title . editor))  -- TODO
-        contentEditor = F.withFocusRing foc (E.renderEditor (txt . unlines)) (note ^. (content . editor))
+    let titleEditor = F.withFocusRing foc (E.renderEditor (txt . unlines)) (note ^. (title . F.editor))  -- TODO
+        contentEditor = F.withFocusRing foc (E.renderEditor (txt . unlines)) (note ^. (content . F.editor))
      in
         hLimit 30 (vLimit 5 contentEditor)
 
@@ -81,7 +78,7 @@ renderLocked foc note =
     hLimit 20 $
     vLimit 5 $
     C.center $
-        txt (note^.(content . fcontent))
+        txt (note^.(content . F.content))
     -- txt (foldr (\note acc -> "* " <> note <> "\n" <> acc) "" (note^.content))
 
 renderMany :: F.FocusRing Id -> [Note] -> Widget Id

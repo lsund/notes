@@ -5,6 +5,7 @@ module Database where
 
 import Prelude hiding (writeFile)
 import qualified Note as N
+import Field
 import Data.String (fromString)
 import Data.Text.Encoding (decodeUtf8)
 import qualified Brick.Widgets.Edit as E
@@ -22,7 +23,7 @@ instance FromJSON Note
 instance ToJSON Note
 
 internalize :: N.Note -> Note
-internalize (N.Note id active locked (N.Field title _) (N.Field content _)) = Note id active locked title content
+internalize (N.Note id active locked (Field title _) (Field content _)) = Note id active locked title content
 
 notesToString :: [N.Note] -> Text
 notesToString = decodeUtf8 . toStrict  . encode . map internalize
@@ -35,7 +36,7 @@ extractList Nothing = []
 extractList (Just xs) = xs
 
 externalize :: Note -> N.Note
-externalize (Note id active locked title content) = N.Note id active locked (N.Field title (E.editor id Nothing title)) (N.Field content (E.editor id Nothing content))
+externalize (Note id active locked title content) = N.Note id active locked (Field title (E.editor id Nothing title)) (Field content (E.editor id Nothing content))
 
 deserialize :: FilePath -> IO (Maybe [N.Note])
 deserialize file = do
