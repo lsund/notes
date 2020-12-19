@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RankNTypes #-}
 module Database where
 

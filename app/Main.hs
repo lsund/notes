@@ -10,7 +10,7 @@ import System.Directory (createDirectoryIfMissing, doesFileExist)
 import Lens.Micro
 import Lens.Micro.TH
 import qualified Note
-import Note (Note, Note(..), Field(..))
+import Note (Note, Note(..), Field(..), editor, fcontent, content, locked)
 import qualified Graphics.Vty as V
 import qualified Brick.AttrMap as A
 import qualified Brick.Focus as F
@@ -65,21 +65,20 @@ isEditing st =
 unlockActive :: F.FocusRing Id -> [Note] -> [Note]
 unlockActive foc = map (\note@(Note i a l t field@(Field c _)) ->
                         if (== Just i) (F.focusGetCurrent foc)
-                        then note { _locked = False, _content = field { _editor = E.editorText (_id note) Nothing c}}
+                        then note & content . editor .~ E.editorText i Nothing c & locked .~ False
                         else note)
 
 lockActive :: F.FocusRing Id -> [Note] -> [Note]
 lockActive foc = map (\note@(Note i a l t field@(Field c e)) ->
                         if (== Just i) (F.focusGetCurrent foc)
-                           then note { _locked = True, _content = field { _fcontent = unlines $ E.getEditContents e}}
+                           then (note & content . fcontent .~ unlines (E.getEditContents e)) & locked .~ True
                         else note)
 
 updateUnlockedEditor :: Functor f => (E.Editor Text Id -> f (E.Editor Text Id)) -> St -> f St
 updateUnlockedEditor f st =
-    let xs = (st ^. notes)
-        unlockedNote = fromJust $ find (not . _locked) xs
-     in (\editor' -> st {_notes = map (updateEditor editor') xs }) <$> f (_editor (_content unlockedNote))
-        where updateEditor ed note | (not . _locked) note = note { _content = (_content note) { _editor = ed } }
+    let unlockedNote = fromJust $ find (not . _locked) (st ^. notes)
+     in (\editor' -> st & notes %~ map (updateEditor editor')) <$> f (_editor (_content unlockedNote))
+        where updateEditor ed note | (not . _locked) note = note & content . editor .~ ed
               updateEditor ed note = note
 
 -- Editor has C-e, C-a, C-d, C-k, C-u, arrows, enter, paste. Should probably
