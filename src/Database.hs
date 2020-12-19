@@ -10,6 +10,7 @@ import Data.String (fromString)
 import Data.Text.Encoding (decodeUtf8)
 import qualified Brick.Widgets.Edit as E
 import Data.ByteString.Lazy (toStrict)
+import qualified Brick.Focus as F
 import Data.Aeson (FromJSON, ToJSON, decode, encode)
 import GHC.Generics
 import Data.Text (Text)
@@ -23,7 +24,7 @@ instance FromJSON Note
 instance ToJSON Note
 
 internalize :: N.Note -> Note
-internalize (N.Note id active locked (Field title _) (Field content _)) = Note id active locked title content
+internalize (N.Note id active locked (Field title _) (Field content _) _) = Note id active locked title content
 
 notesToString :: [N.Note] -> Text
 notesToString = decodeUtf8 . toStrict  . encode . map internalize
@@ -36,7 +37,8 @@ extractList Nothing = []
 extractList (Just xs) = xs
 
 externalize :: Note -> N.Note
-externalize (Note id active locked title content) = N.Note id active locked (Field title (E.editor id Nothing title)) (Field content (E.editor id Nothing content))
+externalize (Note id active locked title content) =
+    N.Note id active locked (Field title (E.editor id Nothing title)) (Field content (E.editor id Nothing content)) (F.focusRing [N.Title, N.Content])
 
 deserialize :: FilePath -> IO (Maybe [N.Note])
 deserialize file = do

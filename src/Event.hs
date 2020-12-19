@@ -26,13 +26,13 @@ isEditing st =
      in (not . null) unlocked
 
 unlockActive :: F.FocusRing Id -> [Note] -> [Note]
-unlockActive foc = map (\note@(Note i a l t field@(Field c _)) ->
+unlockActive foc = map (\note@(Note i a l t field@(Field c _) _) ->
                         if (== Just i) (F.focusGetCurrent foc)
                         then note & Note.content . Field.editor .~ E.editorText i Nothing c & locked .~ False
                         else note)
 
 lockActive :: F.FocusRing Id -> [Note] -> [Note]
-lockActive foc = map (\note@(Note i a l t field@(Field c e)) ->
+lockActive foc = map (\note@(Note i a l t field@(Field c e) _) ->
                         if (== Just i) (F.focusGetCurrent foc)
                            then (note & Note.content . Field.content .~ unlines (E.getEditContents e)) & locked .~ True
                         else note)
@@ -56,6 +56,7 @@ eventHandler st (T.VtyEvent ev)  =
         V.EvKey (V.KChar 'g') [V.MCtrl] | isEditing st -> M.continue (st & notes %~ lockActive (st ^. focusRing))
         V.EvKey (V.KChar 'g') [V.MCtrl] -> M.halt st
         V.EvKey (V.KChar 'c') [V.MCtrl] -> M.halt st
-        _ -> M.continue =<< T.handleEventLensed st updateUnlockedEditor E.handleEditorEvent ev
+        _ | isEditing st -> M.continue =<< T.handleEventLensed st updateUnlockedEditor E.handleEditorEvent ev
+        _ -> M.continue st
 eventHandler st _ = M.continue st
 

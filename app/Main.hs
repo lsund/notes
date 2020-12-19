@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
 module Main where
 
