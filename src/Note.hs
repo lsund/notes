@@ -6,10 +6,11 @@
 module Note where
 
 import Prelude hiding (unlines, id)
-import Data.Text (Text, unlines)
+import Data.Text (unlines)
 import GHC.Generics
 import Lens.Micro
 import Lens.Micro.TH
+
 import Brick.Types (Widget)
 import Brick.AttrMap (AttrName, applyAttrMappings)
 import Brick.Widgets.Center (center)
