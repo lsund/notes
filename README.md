@@ -1,48 +1,48 @@
 # Notes.hs [WIP]
 
 This is a notetaking program built inspired by
-[Tiddlywiki](https://tiddlywiki.com/) and built with
+[Tiddlywiki](https://tiddlywiki.com/)(TW) and built with
 [Brick](https://github.com/jtdaugherty/brick).
 
-I like Tiddlywiki because of its lightweight feel and uncomplicated way of
+I like Tiddlywiki because of its lightweight feel and how frictionless it is
 taking and linking notes. However, there are some aspects that I do not
 particularly like:
 
-1. Due to it being a web-application, there is a lot of clicking and other
-  mouse-action. This can be difficult if you are working on a laptop and don't
-  have access to a mouse.
+1. It is a web-application, which means a lot of clicking around. I like
+   applications that are mouse-free, but of course that is just personal
+   preference.
 
-2. The UI that comes out of the box is not that good. There is no way to sort
-   open nodes  except for closing them and reopening them in a different order.
-   There are animations that make the interaction slower. The look and feel
-   isn't that great, and bloated with a lot of options that isn't directly
-   helpful to the essential process of taking and linking notes.
+2. The "out of the box" TW UI that comes out of the box is not that good. The
+   only way to organize your open notes is closing them and reopening them in a
+   different order. There are animations that make the interaction slower.
+   It also doesn't look great, and bloated with a lot of options that
+   isn't directly helpful to the essential process of taking and linking notes.
 
-3. It has the feel of a SPA, but it has no dedicated backend. Instead, it
-   stores its state in the DOM and it is up to you to figure out how to persist
-   the changes to disk. You can use a Node implementation that TW provides, or
-   any WebDAV. With my WebDAV implementation, I could not figure out a way to
-   automatically update links when their corresponding tiddler names changed.
-   As a result, anytime I update the name of a tiddler, I potentially break
-   multiple links in other tiddlers and have to verify this manually every
-   time.
+3. TW has the feel of a being a SPA, but it has no dedicated backend. Instead,
+   it stores its state in the DOM and it is up to you to figure out how to
+   persist the changes to disk. You can use a Node implementation that TW
+   provides, or any WebDAV. With my WebDAV implementation, I could not figure
+   out a way to automatically update links when their corresponding tiddler
+   names changed.  As a result, anytime I update the name of a tiddler, I
+   potentially break multiple links in other tiddlers and have to verify this
+   manually every time.
 
-## What it is
+## What This is
 
-This is an implementation of a note-taking program that addresses the above
-points and tries to improve on them. The purpose is to quickly and easily take
-and link notes in a bi-directional, non-linear way.
+This is an implementation of a note-taking program that is implemented with the
+three points above serving as guidelines for what it shouldn't be.
+The overall goal, is to be able  quickly and easily take and link notes in a
+bi-directional, non-linear way, with a simple and quick UI, that doesn't look
+or feel bad.
 
-1. As I am more confortable on the command line and text editors, I decided to
-   implement the program in a terminal environment. Terminal input and
-   terminal rendering is hard, so we use Brick that seems to approach these
-   problems in a good way. By working in a terminal environment, we eliminate
-   the mouse completely and are free to choose our hotkeys as we want.
+1. In a terminal environment, we don't need the mouse at all and have a
+   isolated environment for customizable hotkeys. We don't need to implement
+   terminal input or rendering ourselves, for this we use Brick.
 
-2. The program uses the terminal as interface, which has a universal look and
-   feel that everybody using it is familiar with. The color and formatting
-   options that modern terminals handle are enough for our purpose. No
-   animations, no redundant, distracting options.
+2. The terminal interface has an universal look and feel. Anybody familiar with
+   the command line and basic text editors should feel confortable using our
+   program. The color and formatting options that modern terminals handle are
+   enough for our purpose. No animations, no redundant, distracting options.
 
 3. The entire state can be persisted to a file, and this is done locally in a
    common file format. It has a single binary and no external dependencies. A
@@ -66,7 +66,7 @@ stack install
 
 * Can cycle between notes
 
-* Can update the content of notes
+* Can update the content and titles of notes
 
 ## Todo
 

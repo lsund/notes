@@ -25,6 +25,8 @@ import           State
 activateOnId :: Integer -> [Note] -> [Note]
 activateOnId id  = map (\note -> if _id note == id then note { _active = True } else note { _active = False })
 
+-- There should be exactly one active note at all times. Otherwise, something
+-- is wrong with this function
 activate :: (Integer -> Integer) -> [Note] -> [Note]
 activate next xs =
     let maxIndex = maximum $ map _id xs
