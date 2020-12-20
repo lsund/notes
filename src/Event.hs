@@ -8,7 +8,7 @@ import           Data.Text          (Text, unlines)
 import           Lens.Micro
 import           Prelude            hiding (unlines)
 
-import           Brick.Focus        (FocusRing, focusGetCurrent, withFocusRing)
+import           Brick.Focus        (focusGetCurrent)
 import           Brick.Main         (continue, halt)
 import           Brick.Types        (BrickEvent (..), EventM, Next, handleEventLensed)
 import           Brick.Widgets.Edit (Editor, editorText, getEditContents, handleEditorEvent)
@@ -29,7 +29,7 @@ activate :: (Integer -> Integer) -> [Note] -> [Note]
 activate next xs =
     let maxIndex = maximum $ map _id xs
      in case find _active xs of
-      Nothing -> error "Event.activate: Should not happen"
+      Nothing -> error "Should not happen"
       Just activeNote ->
           let nextIndex = max (min (next (_id activeNote)) maxIndex) 0
            in activateOnId nextIndex xs
@@ -44,16 +44,18 @@ isEditing st = (not . null) (filter (not . _locked) (st ^. notes))
 
 unlockActive :: [Note] -> [Note]
 unlockActive = map (\note@(Note i a l (Field t _) (Field c _) foc) ->
-                        let focusedContent = case focusGetCurrent foc of Just (Resource _ Title) -> t; _ -> c
-                        in if a
-                        then note & Note.content . Field.editor .~ editorText (Resource i Content) Nothing focusedContent & locked .~ False
+                        if a
+                              then let tt = editorText (Resource i Title) Nothing t
+                                       tc = editorText (Resource i Content) Nothing c
+                                    in note & Note.title . Field.editor .~ tt & Note.content . Field.editor .~ tc & locked .~ False
                         else note)
 
 lockActive :: [Note] -> [Note]
 lockActive = map (\note@(Note i a l (Field t te) (Field c ce) foc) ->
-                    let focusedEditor = case focusGetCurrent foc of Just (Resource _ Title) -> te; _ -> ce
-                    in if a
-                           then (note & focusedField note . Field.content .~ unlines (getEditContents focusedEditor)) & locked .~ True
+                    if a
+                          then let ce' = unlines (getEditContents ce)
+                                   te' = unlines (getEditContents te)
+                                in note & Note.title . Field.content .~ te' & Note.content . Field.content .~ ce' & locked .~ True
                         else note)
 
 updateUnlockedEditor :: Functor f => (Editor Text Resource -> f (Editor Text Resource)) -> St -> f St
