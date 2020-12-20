@@ -29,7 +29,7 @@ activate :: (Integer -> Integer) -> [Note] -> [Note]
 activate next xs =
     let maxIndex = maximum $ map _id xs
      in case find _active xs of
-      Nothing -> undefined -- FIXME
+      Nothing -> error "Event.activate: Should not happen"
       Just activeNote ->
           let nextIndex = max (min (next (_id activeNote)) maxIndex) 0
            in activateOnId nextIndex xs

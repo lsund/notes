@@ -66,7 +66,7 @@ renderUnlocked note =
     let titleEditor = withFocusRing (note ^. focusRing) (renderEditor (txt . unlines)) (note ^. (title . Field.editor))
         contentEditor = withFocusRing (note ^. focusRing) (renderEditor (txt . unlines)) (note ^. (content . Field.editor))
      in
-       hLimit 30 (vLimit 2 titleEditor) <=> hLimit 30 (vLimit 5 contentEditor)
+       hLimit 30 (vLimit 1 titleEditor) <=> hLimit 30 (vLimit 5 contentEditor)
 
 renderLocked :: Note -> Widget Resource
 renderLocked note =
