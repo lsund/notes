@@ -1,25 +1,25 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes        #-}
 module Event where
 
-import Prelude hiding (unlines)
-import Lens.Micro
-import Data.Maybe (fromJust)
-import Data.List hiding (unlines)
-import Data.Text (Text, unlines)
+import           Data.List          hiding (unlines)
+import           Data.Maybe         (fromJust)
+import           Data.Text          (Text, unlines)
+import           Lens.Micro
+import           Prelude            hiding (unlines)
 
-import Brick.Focus (FocusRing, focusGetCurrent, focusNext, focusPrev)
-import Brick.Widgets.Edit (Editor, editorText, getEditContents, handleEditorEvent)
-import Brick.Types (BrickEvent, BrickEvent(..), EventM, Next, handleEventLensed)
-import Brick.Main (continue, halt)
-import Graphics.Vty (Event(EvKey), Key(KChar, KBackTab), Modifier(MCtrl))
+import           Brick.Focus        (FocusRing, focusGetCurrent, focusNext, focusPrev)
+import           Brick.Main         (continue, halt)
+import           Brick.Types        (BrickEvent (..), EventM, Next, handleEventLensed)
+import           Brick.Widgets.Edit (Editor, editorText, getEditContents, handleEditorEvent)
+import           Graphics.Vty       (Event (EvKey), Key (KBackTab, KChar), Modifier (MCtrl))
 
-import State
-import Prim
+import           Field              (Field (..))
 import qualified Field
-import Field (Field(..))
+import           Note               (Note (..), locked)
 import qualified Note
-import Note (Note, Note(..), locked)
+import           Prim
+import           State
 
 
 isEditing :: St -> Bool

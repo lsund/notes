@@ -26,7 +26,11 @@ source-repository head
 library
   exposed-modules:
       Database
+      Event
+      Field
       Note
+      Prim
+      State
   other-modules:
       Paths_notes
   hs-source-dirs:

@@ -1,44 +1,40 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module Note where
 
-import Prelude hiding (unlines, id)
-import Data.Text (unlines)
-import GHC.Generics
-import Lens.Micro
-import Lens.Micro.TH
+import           Data.Text                  (unlines)
+import           GHC.Generics
+import           Lens.Micro
+import           Lens.Micro.TH
+import           Prelude                    hiding (id, unlines)
 
-import Brick.Types (Widget)
-import Brick.AttrMap (AttrName, applyAttrMappings)
-import Brick.Widgets.Center (center)
-import Brick.Focus (FocusRing, focusGetCurrent, withFocusRing)
-import Brick.Widgets.Border.Style (ascii)
-import Brick.Widgets.Border (borderAttr, borderWithLabel, hBorderWithLabel)
-import Brick.Widgets.Edit (renderEditor)
-import Graphics.Vty (Attr, cyan, blue, black, yellow)
-import Brick.Util (fg, on)
-import Brick.Widgets.Core
-  ( (<=>)
-  , withAttr
-  , vLimit
-  , hLimit
-  , hBox
-  , updateAttrMap
-  , withBorderStyle
-  , txt
-  )
+import           Brick.AttrMap              (AttrName, applyAttrMappings)
+import           Brick.Focus                (FocusRing, focusGetCurrent, withFocusRing)
+import           Brick.Types                (Widget)
+import           Brick.Util                 (fg, on)
+import           Brick.Widgets.Border       (borderAttr, borderWithLabel, hBorderWithLabel)
+import           Brick.Widgets.Border.Style (ascii)
+import           Brick.Widgets.Center       (center)
+import           Brick.Widgets.Core         (hBox, hLimit, txt, updateAttrMap, vLimit, withAttr, withBorderStyle, (<=>))
+import           Brick.Widgets.Edit         (renderEditor)
+import           Graphics.Vty               (Attr, black, blue, cyan, yellow)
 
-import Prim
-import Field (Field(..))
+import           Field                      (Field (..), FieldName)
 import qualified Field
+import           Prim
 
-data FieldName = Title | Content deriving (Show)
-
-data Note = Note { _id :: Integer, _active :: Bool, _locked :: Bool,  _title :: Field, _content :: Field, _focusRing :: FocusRing FieldName }
-    deriving (Generic)
+data Note = Note
+              { _id        :: Integer
+              , _active    :: Bool
+              , _locked    :: Bool
+              , _title     :: Field
+              , _content   :: Field
+              , _focusRing :: FocusRing FieldName
+              }
+  deriving (Generic)
 
 instance Show Note where
     show (Note i a l t c f) =
@@ -66,18 +62,19 @@ render foc note content =
     withBorderStyle ascii $
     borderWithLabel (withAttr "title" $ txt (note ^. (title . Field.content))) content
 
+-- Editor is rendered differently depending on if it has focus.
 renderUnlocked :: FocusRing Id -> Note -> Widget Id
 renderUnlocked foc note =
-    let titleEditor = withFocusRing foc (renderEditor (txt . unlines)) (note ^. (title . Field.editor))  -- TODO
+    let titleEditor = withFocusRing foc (renderEditor (txt . unlines)) (note ^. (title . Field.editor))
         contentEditor = withFocusRing foc (renderEditor (txt . unlines)) (note ^. (content . Field.editor))
      in
-        hLimit 30 (vLimit 5 contentEditor)
+       hLimit 30 (vLimit 5 titleEditor) <=> hLimit 30 (vLimit 5 contentEditor)
 
-renderLocked :: FocusRing Id ->Note -> Widget Id
+renderLocked :: FocusRing Id -> Note -> Widget Id
 renderLocked foc note =
     hLimit 20 $
     vLimit 5 $
-    center $ txt (note^.(content . Field.content))
+    center $ txt (note ^. (content . Field.content))
 
 renderMany :: FocusRing Id -> [Note] -> Widget Id
 renderMany foc notes =

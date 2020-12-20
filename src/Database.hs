@@ -1,25 +1,31 @@
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes        #-}
 module Database where
 
-import Prelude hiding (writeFile)
-import GHC.Generics
-import Data.Text (Text)
-import Data.Text.IO (writeFile)
-import Data.String (fromString)
-import Data.Text.Encoding (decodeUtf8)
-import Data.ByteString.Lazy (toStrict)
-import Data.Aeson (FromJSON, ToJSON, decode, encode)
+import           Data.Aeson           (FromJSON, ToJSON, decode, encode)
+import           Data.ByteString.Lazy (toStrict)
+import           Data.String          (fromString)
+import           Data.Text            (Text)
+import           Data.Text.Encoding   (decodeUtf8)
+import           Data.Text.IO         (writeFile)
+import           GHC.Generics
+import           Prelude              hiding (writeFile)
 
-import qualified Brick.Widgets.Edit as Edit
-import qualified Brick.Focus as Focus
+import qualified Brick.Focus          as Focus
+import qualified Brick.Widgets.Edit   as Edit
 
-import Field
-import Note
+import           Field
+import           Note
 
-data SerializedNote = SerializedNote { _id :: Integer, _active :: Bool, _locked :: Bool,  _title :: Text, _content :: Text }
-    deriving (Generic, Show)
+data SerializedNote = SerializedNote
+                        { _id      :: Integer
+                        , _active  :: Bool
+                        , _locked  :: Bool
+                        , _title   :: Text
+                        , _content :: Text
+                        }
+  deriving (Generic, Show)
 
 instance FromJSON SerializedNote
 
@@ -35,7 +41,7 @@ serialize :: FilePath -> [Note] -> IO ()
 serialize file xs = writeFile file (notesToString xs)
 
 extractList :: Maybe [a] -> [a]
-extractList Nothing = []
+extractList Nothing   = []
 extractList (Just xs) = xs
 
 externalize :: SerializedNote -> Note

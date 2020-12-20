@@ -1,30 +1,31 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes        #-}
 module Main where
 
-import Control.Monad (unless)
-import System.Directory (createDirectoryIfMissing, doesFileExist)
-import Lens.Micro
-import Text.Pretty.Simple (pString)
-import Data.Text.Lazy (toStrict)
+import           Control.Monad        (unless)
+import           Data.Text.Lazy       (toStrict)
+import           Lens.Micro
+import           System.Directory     (createDirectoryIfMissing, doesFileExist)
+import           Text.Pretty.Simple   (pString)
 
-import qualified Brick.Focus as Focus
-import Brick.Util (on)
-import Brick.AttrMap (attrMap)
-import Brick.Widgets.Edit (editAttr, editFocusedAttr)
-import Brick.Main (App, App(..), appDraw, appChooseCursor, appHandleEvent, appStartEvent, appAttrMap, defaultMain)
-import Brick.Types (Widget, CursorLocation)
-import Brick.Widgets.Border (hBorderWithLabel)
-import Brick.Widgets.Center (center)
-import Brick.Widgets.Core ((<=>), str, txt)
-import Graphics.Vty (defAttr, white, blue, black, yellow)
+import           Brick.AttrMap        (attrMap)
+import qualified Brick.Focus          as Focus
+import           Brick.Main           (App (..), appAttrMap, appChooseCursor, appDraw, appHandleEvent, appStartEvent,
+                                       defaultMain)
+import           Brick.Types          (CursorLocation, Widget)
+import           Brick.Util           (on)
+import           Brick.Widgets.Border (hBorderWithLabel)
+import           Brick.Widgets.Center (center)
+import           Brick.Widgets.Core   (str, txt, (<=>))
+import           Brick.Widgets.Edit   (editAttr, editFocusedAttr)
+import           Graphics.Vty         (black, blue, defAttr, white, yellow)
 
-import Prim
-import State
-import Event (eventHandler)
-import Database (serialize, deserialize)
-import Note (Note, Note(..))
+import           Database             (deserialize, serialize)
+import           Event                (eventHandler)
+import           Note                 (Note (..))
 import qualified Note
+import           Prim
+import           State
 
 
 dbdir = "db"
