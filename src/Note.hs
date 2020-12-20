@@ -22,9 +22,9 @@ import           Brick.Widgets.Core         (hBox, hLimit, txt, updateAttrMap, v
 import           Brick.Widgets.Edit         (renderEditor)
 import           Graphics.Vty               (Attr, black, blue, cyan, yellow)
 
-import           Field                      (Field (..), FieldName)
+import           Field                      (Field (..))
 import qualified Field
-import           Prim
+import           Resource
 
 data Note = Note
               { _id        :: Integer
@@ -32,9 +32,11 @@ data Note = Note
               , _locked    :: Bool
               , _title     :: Field
               , _content   :: Field
-              , _focusRing :: FocusRing FieldName
+              , _focusRing :: FocusRing Resource
               }
   deriving (Generic)
+
+makeLenses ''Note
 
 instance Show Note where
     show (Note i a l t c f) =
@@ -47,38 +49,36 @@ instance Ord Note where
     note1 `compare` note2 = _id note1 `compare` _id note2
 
 
-makeLenses ''Note
-
 borderMappings :: Bool -> [(AttrName, Attr)]
 borderMappings active =
     [ (borderAttr, (if active then yellow else blue) `on` black)
     , ("title", fg cyan)
     ]
 
-render :: FocusRing Id ->  Note -> Widget Id -> Widget Id
-render foc note content =
-    let active =  (== Just (note ^. id)) (focusGetCurrent foc)
-     in updateAttrMap (applyAttrMappings (borderMappings active)) $
+render :: Note -> Widget Resource -> Widget Resource
+render note content =
+    updateAttrMap (applyAttrMappings (borderMappings (note ^. active))) $
     withBorderStyle ascii $
     borderWithLabel (withAttr "title" $ txt (note ^. (title . Field.content))) content
 
--- Editor is rendered differently depending on if it has focus.
-renderUnlocked :: FocusRing Id -> Note -> Widget Id
-renderUnlocked foc note =
-    let titleEditor = withFocusRing foc (renderEditor (txt . unlines)) (note ^. (title . Field.editor))
-        contentEditor = withFocusRing foc (renderEditor (txt . unlines)) (note ^. (content . Field.editor))
+renderUnlocked :: Note -> Widget Resource
+renderUnlocked note =
+    let titleEditor = withFocusRing (note ^. focusRing) (renderEditor (txt . unlines)) (note ^. (title . Field.editor))
+        contentEditor = withFocusRing (note ^. focusRing) (renderEditor (txt . unlines)) (note ^. (content . Field.editor))
      in
-       hLimit 30 (vLimit 5 titleEditor) <=> hLimit 30 (vLimit 5 contentEditor)
+       hLimit 30 (vLimit 2 titleEditor) <=> hLimit 30 (vLimit 5 contentEditor)
 
-renderLocked :: FocusRing Id -> Note -> Widget Id
-renderLocked foc note =
+renderLocked :: Note -> Widget Resource
+renderLocked note =
     hLimit 20 $
     vLimit 5 $
     center $ txt (note ^. (content . Field.content))
 
-renderMany :: FocusRing Id -> [Note] -> Widget Id
-renderMany foc notes =
+renderMany :: [Note] -> Widget Resource
+renderMany notes =
     hBorderWithLabel (txt "Existing notes")
     <=> hBox (map
-                (\note -> if _locked note then render foc note (renderLocked foc note)  else render foc note (renderUnlocked foc note))
+                (\note -> if _locked note then render note (renderLocked note)  else render note (renderUnlocked note))
                 notes)
+
+

@@ -7,6 +7,8 @@ import           Data.Text.Lazy       (toStrict)
 import           Lens.Micro
 import           System.Directory     (createDirectoryIfMissing, doesFileExist)
 import           Text.Pretty.Simple   (pString)
+import Data.List (find)
+import Data.Maybe (fromJust)
 
 import           Brick.AttrMap        (attrMap)
 import qualified Brick.Focus          as Focus
@@ -22,13 +24,16 @@ import           Graphics.Vty         (black, blue, defAttr, white, yellow)
 
 import           Database             (deserialize, serialize)
 import           Event                (eventHandler)
-import           Note                 (Note (..))
+import           Note                 (Note (..), focusRing)
 import qualified Note
-import           Prim
+import           Resource
 import           State
 
 
+dbdir :: FilePath
 dbdir = "db"
+
+dbfile :: FilePath
 -- dbfile = "db/large.json"
 dbfile = "db/database.json"
 
@@ -36,20 +41,27 @@ dbfile = "db/database.json"
 -- Rendering
 --
 
-prettyRender :: [Note] -> Widget Id
+prettyRender :: [Note] -> Widget Resource
 prettyRender = txt . toStrict . pString . show
 
-draw :: St -> [Widget Id]
+draw :: St -> [Widget Resource]
 draw st =
-    Note.renderMany (st^.focusRing) (st^.notes) :  [hBorderWithLabel (str "State") <=> center (prettyRender (st^.notes))]
+    Note.renderMany (st^.notes) :  [hBorderWithLabel (str "State") <=> center (prettyRender (st^.notes))]
 
 -------------------------------------------------------------------------------
 --  Event handler
 
-appCursor :: St -> [CursorLocation Id] -> Maybe (CursorLocation Id)
-appCursor = Focus.focusRingCursor (^.focusRing)
+appCursor :: St -> [CursorLocation Resource] -> Maybe (CursorLocation Resource)
+appCursor st xs | null (find (not . _locked) (st ^. notes)) = Nothing
+appCursor st xs = Focus.focusRingCursor (^. notes . to (fromJust . find (not . _locked)) . focusRing) st xs
 
-theApp :: App St e Id
+-- App s e n
+--
+-- s: The application state. Will evolve during execution. Defined in State.hs
+-- e: Event type.
+-- n: Resource name type: Used to uniquely identify Widgets
+--
+theApp :: App St e Resource
 theApp =
     App { appDraw = draw
         , appChooseCursor = appCursor
@@ -59,7 +71,7 @@ theApp =
         }
 
 initialState :: [Note] -> St
-initialState notes = St (Focus.focusRing (map _id notes)) notes
+initialState = St
 
 main :: IO ()
 main = do

@@ -17,6 +17,8 @@ import qualified Brick.Widgets.Edit   as Edit
 
 import           Field
 import           Note
+import           Prim
+import           Resource
 
 data SerializedNote = SerializedNote
                         { _id      :: Integer
@@ -46,7 +48,13 @@ extractList (Just xs) = xs
 
 externalize :: SerializedNote -> Note
 externalize (SerializedNote id active locked title content) =
-    Note id active locked (Field title (Edit.editor id Nothing title)) (Field content (Edit.editor id Nothing content)) (Focus.focusRing [Title, Content])
+    Note
+        id
+        active
+        locked
+        (Field title (Edit.editor (Resource id Title) Nothing title))
+        (Field content (Edit.editor (Resource id Content) Nothing content))
+        (Focus.focusRing [Resource id Title, Resource id Content])
 
 deserialize :: FilePath -> IO (Maybe [Note])
 deserialize file = do

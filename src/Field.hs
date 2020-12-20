@@ -7,13 +7,12 @@ module Field where
 import           Brick.Widgets.Edit (Editor)
 import           Data.Text          (Text)
 import           Lens.Micro.TH
-import           Prim
 
-data FieldName = Title | Content deriving (Show)
+import           Resource
 
 data Field = Field
                { _content :: Text
-               , _editor  :: Editor Text Id
+               , _editor  :: Editor Text Resource
                }
   deriving (Show)
 
