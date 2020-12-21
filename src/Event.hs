@@ -32,9 +32,11 @@ activate next xs =
     let maxIndex = maximum $ map _id xs
      in case find _active xs of
       Nothing -> error "Should not happen"
-      Just activeNote ->
-          let nextIndex = max (min (next (_id activeNote)) maxIndex) 0
-           in activateOnId nextIndex xs
+      Just activeNote -> activateOnId (nextIndex (_id activeNote) maxIndex) xs
+    where
+        nextIndex aid mid | next aid > mid = 0
+        nextIndex aid mid | next aid < 0 = mid
+        nextIndex aid _ = next aid
 
 focusedField :: Functor f => Note -> (Field -> f Field) -> Note -> f Note
 focusedField note = case focusGetCurrent (note ^. focusRing) of
