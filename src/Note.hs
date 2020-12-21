@@ -13,19 +13,18 @@ import           Lens.Micro
 import           Lens.Micro.TH
 import           Prelude                    hiding (id, unlines)
 
-import           Brick.AttrMap              (AttrName, applyAttrMappings)
+import           Brick.AttrMap              (applyAttrMappings)
 import           Brick.Focus                (FocusRing, focusGetCurrent, withFocusRing)
-import           Brick.Markup               (markup)
+import           Brick.Markup               (markup, (@?))
 import           Brick.Types                (Padding (..), Widget)
-import           Brick.Util                 (fg, on)
+import           Brick.Util                 (on)
 import           Brick.Widgets.Border       (borderAttr, borderWithLabel, hBorderWithLabel)
 import           Brick.Widgets.Border.Style (ascii)
 import           Brick.Widgets.Center       (center)
 import           Brick.Widgets.Core         (hBox, hLimit, padTop, txt, updateAttrMap, vLimit, withAttr,
                                              withBorderStyle, (<=>))
 import           Brick.Widgets.Edit         (renderEditor)
-import           Data.Text.Markup           ((@@))
-import           Graphics.Vty               (Attr, black, blue, cyan, green, yellow)
+import           Graphics.Vty               (black, blue, yellow)
 
 import           Field                      (Field (..))
 import qualified Field
@@ -63,21 +62,18 @@ instance Ord Note where
 showLastUpdated :: UTCTime -> String
 showLastUpdated = formatTime defaultTimeLocale formatStr
 
-borderMappings :: Bool -> [(AttrName, Attr)]
-borderMappings active =
-    [ (borderAttr, (if active then yellow else blue) `on` black)
-    , ("title", fg cyan)
-    ]
 
 renderMetadata :: Note -> Widget Resource
 renderMetadata note = padTop (Pad 2) $ shaded (pack (showLastUpdated (note ^. lastUpdated)))
-    where shaded c = markup (c @@ fg green)
+    where shaded c = markup (c @? "meta")
 
 render :: Note -> Widget Resource -> Widget Resource
 render note content =
-    updateAttrMap (applyAttrMappings (borderMappings (note ^. active))) $
+    updateAttrMap (applyAttrMappings (borderStyle (note ^. active))) $
     withBorderStyle ascii $
     borderWithLabel (withAttr "title" $ txt (note ^. (title . Field.content))) content
+    where
+        borderStyle active = [ (borderAttr, (if active then yellow else blue) `on` black) ]
 
 renderUnlocked :: Note -> Widget Resource
 renderUnlocked note =

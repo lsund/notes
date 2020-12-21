@@ -15,12 +15,12 @@ import qualified Brick.Focus          as Focus
 import           Brick.Main           (App (..), appAttrMap, appChooseCursor, appDraw, appHandleEvent, appStartEvent,
                                        defaultMain)
 import           Brick.Types          (CursorLocation, Widget)
-import           Brick.Util           (on)
+import           Brick.Util           (on, fg)
 import           Brick.Widgets.Border (hBorderWithLabel)
 import           Brick.Widgets.Center (center)
 import           Brick.Widgets.Core   (str, txt, (<=>))
 import           Brick.Widgets.Edit   (editAttr, editFocusedAttr)
-import           Graphics.Vty         (black, blue, defAttr, white, yellow)
+import           Graphics.Vty         (black, blue, defAttr, white, yellow, green, cyan)
 
 import           Database             (deserialize, serialize)
 import           Event                (eventHandler)
@@ -67,7 +67,12 @@ theApp =
         , appChooseCursor = appCursor
         , appHandleEvent = eventHandler
         , appStartEvent = return
-        , appAttrMap = const $ attrMap defAttr [ (editAttr, white `on` blue) , (editFocusedAttr, black `on` yellow) ]
+        , appAttrMap =
+            const $ attrMap defAttr
+                        [ (editAttr, white `on` blue)
+                        , (editFocusedAttr, black `on` yellow)
+                        , ("meta", green `on` black)
+                        , ("title", fg cyan)]
         }
 
 initialState :: [Note] -> St
