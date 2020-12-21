@@ -6,9 +6,11 @@ module Database where
 import           Data.Aeson           (FromJSON, ToJSON, decode, encode)
 import           Data.ByteString.Lazy (toStrict)
 import           Data.String          (fromString)
-import           Data.Text            (Text)
+import           Data.Text            (Text, unpack, pack)
 import           Data.Text.Encoding   (decodeUtf8)
 import           Data.Text.IO         (writeFile)
+import           Data.Time.Clock      (UTCTime)
+import           Data.Time.Format     (parseTimeOrError, defaultTimeLocale, formatTime)
 import           GHC.Generics
 import           Prelude              hiding (writeFile)
 
@@ -21,11 +23,12 @@ import           Prim
 import           Resource
 
 data SerializedNote = SerializedNote
-                        { _id      :: Integer
-                        , _active  :: Bool
-                        , _locked  :: Bool
-                        , _title   :: Text
-                        , _content :: Text
+                        { _id          :: Integer
+                        , _active      :: Bool
+                        , _locked      :: Bool
+                        , _title       :: Text
+                        , _content     :: Text
+                        , _lastUpdated :: Text
                         }
   deriving (Generic, Show)
 
@@ -36,7 +39,7 @@ instance ToJSON SerializedNote
 -- From db
 
 load :: SerializedNote -> Note
-load (SerializedNote id active locked title content) =
+load (SerializedNote id active locked title content lastUpdated) =
     Note
         id
         active
@@ -44,6 +47,7 @@ load (SerializedNote id active locked title content) =
         (Field title (Edit.editor (Resource id Title) Nothing title))
         (Field content (Edit.editor (Resource id Content) Nothing content))
         (Focus.focusRing [Resource id Title, Resource id Content])
+        (parseTimeOrError True defaultTimeLocale formatStr (unpack lastUpdated) :: UTCTime)
 
 deserialize :: FilePath -> IO (Maybe [Note])
 deserialize file = do
@@ -54,7 +58,8 @@ deserialize file = do
 -- To db
 
 unload :: Note -> SerializedNote
-unload (Note id active locked (Field title _) (Field content _) _) = SerializedNote id active locked title content
+unload (Note id active locked (Field title _) (Field content _) _ lastUpdated) =
+    SerializedNote id active locked title content (pack (formatTime defaultTimeLocale formatStr lastUpdated))
 
 encodeNotes :: [Note] -> Text
 encodeNotes = decodeUtf8 . toStrict  . encode . map unload

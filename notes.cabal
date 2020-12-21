@@ -47,6 +47,8 @@ library
     , pretty-simple
     , split
     , text
+    , time
+    , transformers
     , vty
   default-language: Haskell2010
 
@@ -69,6 +71,8 @@ executable notes
     , pretty-simple
     , split
     , text
+    , time
+    , transformers
     , vty
   default-language: Haskell2010
 
@@ -92,5 +96,7 @@ test-suite notes-test
     , pretty-simple
     , split
     , text
+    , time
+    , transformers
     , vty
   default-language: Haskell2010

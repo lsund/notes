@@ -31,6 +31,8 @@ dependencies:
 - aeson
 - bytestring
 - pretty-simple
+- transformers
+- time
 
 library:
   source-dirs: src
