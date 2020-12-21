@@ -8,7 +8,7 @@ import           Data.Text          (Text, unlines)
 import           Lens.Micro
 import           Prelude            hiding (unlines)
 
-import           Brick.Focus        (focusGetCurrent)
+import           Brick.Focus        (focusGetCurrent, focusNext)
 import           Brick.Main         (continue, halt)
 import           Brick.Types        (BrickEvent (..), EventM, Next, handleEventLensed)
 import           Brick.Widgets.Edit (Editor, editorText, getEditContents, handleEditorEvent)
@@ -53,12 +53,13 @@ unlockActive = map (\note@(Note i a l (Field t _) (Field c _) foc) ->
                         else note)
 
 lockActive :: [Note] -> [Note]
-lockActive = map (\note@(Note i a l (Field t te) (Field c ce) foc) ->
-                    if a
-                          then let ce' = unlines (getEditContents ce)
-                                   te' = unlines (getEditContents te)
-                                in note & Note.title . Field.content .~ te' & Note.content . Field.content .~ ce' & locked .~ True
-                        else note)
+lockActive =
+    map (\note@(Note i a l (Field t te) (Field c ce) _) ->
+        if a
+           then let ce' = unlines (getEditContents ce)
+                    te' = unlines (getEditContents te)
+                 in note & Note.title . Field.content .~ te' & Note.content . Field.content .~ ce' & locked .~ True
+            else note)
 
 updateUnlockedEditor :: Functor f => (Editor Text Resource -> f (Editor Text Resource)) -> St -> f St
 updateUnlockedEditor f st =
@@ -72,14 +73,21 @@ updateUnlockedEditor f st =
         updateEditor ed note | (not . _locked) note = note & focusedField note . Field.editor .~ ed
         updateEditor ed note = note
 
+toggleFocus :: [Note] -> [Note]
+toggleFocus =
+    map (\note@(Note i a l (Field t te) (Field c ce) foc) ->
+        if a
+           then note & Note.focusRing %~ focusNext
+            else note)
+
 -- Editor has C-e, C-a, C-d, C-k, C-u, arrows, enter, paste. Should probably
 -- keep away from those
 eventHandler :: St -> BrickEvent Resource e -> EventM Resource (Next St)
 eventHandler st (VtyEvent ev)  =
      case ev of
+        EvKey (KChar '\t') [] | isEditing st -> continue (st & notes %~ toggleFocus)
         EvKey (KChar '\t') [] -> continue (st & notes %~ activate succ)
         EvKey KBackTab [] -> continue (st & notes %~ activate pred)
-        -- EvKey (KChar '\t') [] | isEditing st -> continue (st & notes %~ activate succ)
         EvKey (KChar 'o') [MCtrl] -> continue (st & notes %~ unlockActive)
         EvKey (KChar 's') [MCtrl] -> continue (st & notes %~ lockActive)
         EvKey (KChar 'g') [MCtrl] | isEditing st -> continue (st & notes %~ lockActive)

@@ -32,17 +32,11 @@ data SerializedNote = SerializedNote
 instance FromJSON SerializedNote
 instance ToJSON SerializedNote
 
-internalize :: Note -> SerializedNote
-internalize (Note id active locked (Field title _) (Field content _) _) = SerializedNote id active locked title content
+-------------------------------------------------------------------------------
+-- From db
 
-notesToString :: [Note] -> Text
-notesToString = decodeUtf8 . toStrict  . encode . map internalize
-
-serialize :: FilePath -> [Note] -> IO ()
-serialize file xs = writeFile file (notesToString xs)
-
-externalize :: SerializedNote -> Note
-externalize (SerializedNote id active locked title content) =
+load :: SerializedNote -> Note
+load (SerializedNote id active locked title content) =
     Note
         id
         active
@@ -54,5 +48,16 @@ externalize (SerializedNote id active locked title content) =
 deserialize :: FilePath -> IO (Maybe [Note])
 deserialize file = do
     content <- readFile file
-    return $ map externalize <$> decode (fromString content)
+    return $ map load <$> decode (fromString content)
 
+-------------------------------------------------------------------------------
+-- To db
+
+unload :: Note -> SerializedNote
+unload (Note id active locked (Field title _) (Field content _) _) = SerializedNote id active locked title content
+
+encodeNotes :: [Note] -> Text
+encodeNotes = decodeUtf8 . toStrict  . encode . map unload
+
+serialize :: FilePath -> [Note] -> IO ()
+serialize file xs = writeFile file (encodeNotes xs)
