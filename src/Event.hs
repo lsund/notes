@@ -14,7 +14,7 @@ import           Brick.Focus            (focusGetCurrent, focusNext)
 import           Brick.Main             (continue, halt)
 import           Brick.Types            (BrickEvent (..), EventM, Next, handleEventLensed)
 import           Brick.Widgets.Edit     (Editor, editorText, getEditContents, handleEditorEvent)
-import           Graphics.Vty           (Event (EvKey), Key (KBackTab, KChar), Modifier (MCtrl))
+import           Graphics.Vty           (Event (EvKey), Key (KBackTab, KChar, KEnter), Modifier (MCtrl))
 
 import           Field                  (Field (..))
 import qualified Field
@@ -40,13 +40,25 @@ activate next xs =
         nextIndex aid mid | next aid < 0 = mid
         nextIndex aid _   = next aid
 
+
+focusedResource :: St -> Maybe Resource
+focusedResource st =
+    let activeNote = fromJust $ find _active (st ^. notes)
+     in focusedResource' activeNote
+
+focusedResource' :: Note -> Maybe Resource
+focusedResource' note = focusGetCurrent (note ^. focusRing)
+
 focusedField :: Functor f => Note -> (Field -> f Field) -> Note -> f Note
-focusedField note = case focusGetCurrent (note ^. focusRing) of
+focusedField note = case focusedResource' note of
                 Just (Resource _ Title) -> Note.title
                 _                       -> Note.content
 
 isEditing :: St -> Bool
-isEditing st = (not . null) (filter (not . _locked) (st ^. notes)) -- TODO Ensure that active note is actually unlocked
+isEditing st = (not . null) (filter (\n -> _active n && (not . _locked) n) (st ^. notes))
+
+isEditingTitle :: St -> Bool
+isEditingTitle st = isEditing st && case focusedResource st of Just (Resource _ Title) -> True; _ -> False
 
 unlockActive :: [Note] -> [Note]
 unlockActive = map (\note@(Note i a l (Field t _) (Field c _) foc _) ->
@@ -67,13 +79,12 @@ lockActive =
 
 updateUnlockedEditor :: Functor f => (Editor Text Resource -> f (Editor Text Resource)) -> St -> f St
 updateUnlockedEditor f st =
-    let  focusedEditor = case focus of
+    let  focusedEditor = case focusedResource st of
                             Just (Resource _ Title) -> Field._editor (Note._title activeNote)
                             _                       -> Field._editor (Note._content activeNote)
      in (\editor' -> st & notes %~ map (updateEditor editor')) <$> f focusedEditor
      where
         activeNote = fromJust $ find _active (st ^. notes)
-        focus = focusGetCurrent (activeNote ^. focusRing)
         updateEditor ed note | _active note && (not . _locked) note = note & focusedField note . Field.editor .~ ed
         updateEditor ed note = note
 
@@ -92,6 +103,7 @@ updateTime ct = map (\note@(Note i a l t c foc ut) -> if a then Note i a l t c f
 eventHandler :: St -> BrickEvent Resource e -> EventM Resource (Next St)
 eventHandler st (VtyEvent ev)  =
      case ev of
+        EvKey KEnter [] | isEditingTitle st -> continue st
         EvKey (KChar '\t') [] | isEditing st -> continue (st & notes %~ toggleFocus)
         EvKey (KChar '\t') [] -> continue (st & notes %~ activate succ)
         EvKey KBackTab [] -> continue (st & notes %~ activate pred)
