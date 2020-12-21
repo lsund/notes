@@ -30,7 +30,6 @@ data SerializedNote = SerializedNote
   deriving (Generic, Show)
 
 instance FromJSON SerializedNote
-
 instance ToJSON SerializedNote
 
 internalize :: Note -> SerializedNote
@@ -41,10 +40,6 @@ notesToString = decodeUtf8 . toStrict  . encode . map internalize
 
 serialize :: FilePath -> [Note] -> IO ()
 serialize file xs = writeFile file (notesToString xs)
-
-extractList :: Maybe [a] -> [a]
-extractList Nothing   = []
-extractList (Just xs) = xs
 
 externalize :: SerializedNote -> Note
 externalize (SerializedNote id active locked title content) =
