@@ -59,6 +59,12 @@ instance Eq Note where
 instance Ord Note where
     note1 `compare` note2 = _id note1 `compare` _id note2
 
+height :: Int
+height = 10
+
+width :: Int
+width = 30
+
 showLastUpdated :: UTCTime -> String
 showLastUpdated = formatTime defaultTimeLocale formatStr
 
@@ -67,11 +73,16 @@ renderMetadata :: Note -> Widget Resource
 renderMetadata note = padTop (Pad 2) $ shaded (pack (showLastUpdated (note ^. lastUpdated)))
     where shaded c = markup (c @? "meta")
 
-render :: Note -> Widget Resource -> Widget Resource
-render note content =
+render :: Note -> Widget Resource
+render note =
     updateAttrMap (applyAttrMappings (borderStyle (note ^. active))) $
     withBorderStyle ascii $
-    borderWithLabel (withAttr "title" $ txt (note ^. (title . Field.content))) content
+    borderWithLabel (withAttr "title" $ txt (note ^. (title . Field.content))) $
+        hLimit width $
+        vLimit height $
+        center $
+            txt (note ^. (content . Field.content))
+            <=> renderMetadata note
     where
         borderStyle active = [ (borderAttr, (if active then yellow else blue) `on` black) ]
 
@@ -80,21 +91,13 @@ renderUnlocked note =
     let titleEditor = withFocusRing (note ^. focusRing) (renderEditor (txt . unlines)) (note ^. (title . Field.editor))
         contentEditor = withFocusRing (note ^. focusRing) (renderEditor (txt . unlines)) (note ^. (content . Field.editor))
      in
-       hLimit 30 (vLimit 1 titleEditor) <=> hLimit 30 (vLimit 5 contentEditor)
-
-renderLocked :: Note -> Widget Resource
-renderLocked note =
-    hLimit 30 $
-    vLimit 10 $
-    center $
-        txt (note ^. (content . Field.content))
-        <=> renderMetadata note
+       hLimit width (vLimit 1 titleEditor) <=> hLimit width (vLimit height contentEditor)
 
 renderMany :: [Note] -> Widget Resource
 renderMany notes =
     hBorderWithLabel (txt "Existing notes")
     <=> hBox (map
-                (\note -> if _locked note then render note (renderLocked note)  else render note (renderUnlocked note))
+                (\note -> if _locked note then render note  else renderUnlocked note)
                 notes)
 
 

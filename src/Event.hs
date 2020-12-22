@@ -100,19 +100,31 @@ updateTime ct = map (\note@(Note i a l t c foc ut) -> if a then Note i a l t c f
 
 -- Editor has C-e, C-a, C-d, C-k, C-u, arrows, enter, paste. Should probably
 -- keep away from those
+--
+-- Tmux Blocks meta/alt
 eventHandler :: St -> BrickEvent Resource e -> EventM Resource (Next St)
 eventHandler st (VtyEvent ev)  =
-     case ev of
-        EvKey KEnter [] | isEditingTitle st -> continue st
-        EvKey (KChar '\t') [] | isEditing st -> continue (st & notes %~ toggleFocus)
+    let editing = isEditing st
+        editingTitle = isEditingTitle st
+    in case ev of
+        -- Ignoring
+        EvKey KEnter [] | editingTitle -> continue st
+        -- Toggling focus
+        EvKey (KChar '\t') [] | editing -> continue (st & notes %~ toggleFocus)
+        -- Toggling active
         EvKey (KChar '\t') [] -> continue (st & notes %~ activate succ)
         EvKey KBackTab [] -> continue (st & notes %~ activate pred)
+        EvKey (KChar 'l') [] | not editing -> continue (st & notes %~ activate succ)
+        EvKey (KChar 'h') [] | not editing -> continue (st & notes %~ activate pred)
+        -- Lock/unlock
+        EvKey (KChar 'g') [MCtrl] | editing -> continue (st & notes %~ lockActive)
         EvKey (KChar 'o') [MCtrl] -> continue (st & notes %~ unlockActive)
         EvKey (KChar 's') [MCtrl] -> continue (st & notes %~ lockActive)
-        EvKey (KChar 'g') [MCtrl] | isEditing st -> continue (st & notes %~ lockActive)
+        -- Stop
         EvKey (KChar 'g') [MCtrl] -> halt st
         EvKey (KChar 'c') [MCtrl] -> halt st
-        _ | isEditing st -> do
+        -- Editor event
+        _ | editing -> do
             ct <- liftIO getCurrentTime
             let st' = st & notes %~ updateTime ct
             continue =<< handleEventLensed st' updateUnlockedEditor handleEditorEvent ev
