@@ -25,22 +25,6 @@ import           Prim
 import           Resource
 import           State
 
-activateOnId :: Integer -> [Note] -> [Note]
-activateOnId id  = map (\note -> if _id note == id then note { _active = True } else note { _active = False })
-
--- There should be exactly one active note at all times. Otherwise, something
--- is wrong with this function
-activate :: (Integer -> Integer) -> [Note] -> [Note]
-activate next xs =
-    let maxIndex = maximum $ map _id xs
-     in case find _active xs of
-      Nothing         -> error "Should not happen"
-      Just activeNote -> activateOnId (nextIndex (_id activeNote) maxIndex) xs
-    where
-        nextIndex aid mid | next aid > mid = 0
-        nextIndex aid mid | next aid < 0 = mid
-        nextIndex aid _   = next aid
-
 
 focusedResource :: St -> Maybe Resource
 focusedResource st =
@@ -61,6 +45,25 @@ isEditing st = (not . null) (filter (\n -> _active n && (not . _locked) n) (st ^
 isEditingTitle :: St -> Bool
 isEditingTitle st = isEditing st && case focusedResource st of Just (Resource _ Title) -> True; _ -> False
 
+-------------------------------------------------------------------------------
+-- Toggling Active
+
+activateOnId :: Integer -> [Note] -> [Note]
+activateOnId id  = map (\note -> if _id note == id then note { _active = True } else note { _active = False })
+
+-- There should be exactly one active note at all times. Otherwise, something
+-- is wrong with this function
+activate :: (Integer -> Integer) -> [Note] -> [Note]
+activate next xs =
+    let maxIndex = maximum $ map _id xs
+     in case find _active xs of
+      Nothing         -> error "Should not happen"
+      Just activeNote -> activateOnId (nextIndex (_id activeNote) maxIndex) xs
+    where
+        nextIndex aid mid | next aid > mid = 0
+        nextIndex aid mid | next aid < 0 = mid
+        nextIndex aid _   = next aid
+
 unlockActive :: [Note] -> [Note]
 unlockActive = map (\note@(Note i a l (Field t _) (Field c _) foc _) ->
                         if a
@@ -78,23 +81,14 @@ lockActive =
                  in note & Note.title . Field.content .~ te' & Note.content . Field.content .~ ce' & locked .~ True
             else note)
 
-updateUnlockedEditor :: Functor f => (Editor Text Resource -> f (Editor Text Resource)) -> St -> f St
-updateUnlockedEditor f st =
-    let  focusedEditor = case focusedResource st of
-                            Just (Resource _ Title) -> Field._editor (Note._title activeNote)
-                            _                       -> Field._editor (Note._content activeNote)
-     in (\editor' -> st & notes %~ map (updateEditor editor')) <$> f focusedEditor
-     where
-        activeNote = fromJust $ find _active (st ^. notes)
-        updateEditor ed note | _active note && (not . _locked) note = note & focusedField note . Field.editor .~ ed
-        updateEditor ed note = note
+-------------------------------------------------------------------------------
+-- Toggling Focus
 
 toggleFocus :: [Note] -> [Note]
-toggleFocus =
-    map (\note@(Note i a l (Field t te) (Field c ce) foc _) ->
-        if a
-           then note & Note.focusRing %~ focusNext
-            else note)
+toggleFocus = map (\note@(Note _ a _  _ _ _ _) -> if a then note & Note.focusRing %~ focusNext else note)
+
+-------------------------------------------------------------------------------
+    -- Create / Delete
 
 addNote :: UTCTime -> [Note] -> [Note]
 addNote ct xs =
@@ -108,9 +102,39 @@ addNote ct xs =
                 (Focus.focusRing [Resource i Title, Resource i Content]) ct
      in sort $ x : xs
 
+-- Maybe the most expensive operation with this implementation?
+deleteNote :: [Note] -> [Note]
+deleteNote xs =
+    let oneLess = foldl (\acc note@(Note _ a _ _ _ _ _) -> if a then acc else note : acc) [] xs
+        (_, reIndexed) = foldl
+                        (\(i, acc) note@(Note _ a l (Field t te) (Field c ce) foc ut) ->
+                            let title' = Field t (editorText (Resource i Title) Nothing t)
+                                content' = Field c (editorText (Resource i Content) Nothing c)
+                             in (succ i, Note i a l title' content' foc ut :  acc))
+                        (0, [])
+                        oneLess
+                             in reIndexed & ix 0 . Note.active .~ True
+
+-------------------------------------------------------------------------------
+    -- Editor Event
+
 updateTime :: UTCTime -> [Note] -> [Note]
 updateTime ct = map (\note@(Note i a l t c foc ut) -> if a then Note i a l t c foc ct else note)
 
+updateUnlockedEditor :: Functor f => (Editor Text Resource -> f (Editor Text Resource)) -> St -> f St
+updateUnlockedEditor f st =
+    let  focusedEditor = case focusedResource st of
+                            Just (Resource _ Title) -> Field._editor (Note._title activeNote)
+                            _                       -> Field._editor (Note._content activeNote)
+     in (\editor' -> st & notes %~ map (updateEditor editor')) <$> f focusedEditor
+     where
+        activeNote = fromJust $ find _active (st ^. notes)
+        updateEditor ed note | _active note && (not . _locked) note = note & focusedField note . Field.editor .~ ed
+        updateEditor ed note = note
+
+-------------------------------------------------------------------------------
+-- Main
+--
 -- Editor has C-e, C-a, C-d, C-k, C-u, arrows, enter, paste. Should probably
 -- keep away from those
 --
@@ -121,7 +145,7 @@ eventHandler st (VtyEvent ev)  = do
     let editing = isEditing st
         editingTitle = isEditingTitle st
     case ev of
-        -- Ignoring
+      -- Ignoring
         EvKey KEnter [] | editingTitle -> continue st
         -- Toggling focus
         EvKey (KChar '\t') [] | editing -> continue (st & notes %~ toggleFocus)
@@ -134,8 +158,9 @@ eventHandler st (VtyEvent ev)  = do
         EvKey (KChar 'g') [MCtrl] | editing -> continue (st & notes %~ lockActive)
         EvKey (KChar 'o') [MCtrl] -> continue (st & notes %~ unlockActive)
         EvKey (KChar 's') [MCtrl] -> continue (st & notes %~ lockActive)
-        -- Create
+        -- Create / Delete
         EvKey (KChar 'n') [MCtrl] | not editing -> continue (st & notes %~ addNote ct)
+        EvKey (KChar 'd') [MCtrl] | not editing -> continue (st & notes %~ deleteNote)
         -- Stop
         EvKey (KChar 'g') [MCtrl] -> halt st
         EvKey (KChar 'c') [MCtrl] -> halt st
