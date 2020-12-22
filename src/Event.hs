@@ -10,6 +10,7 @@ import           Data.Time.Clock
 import           Lens.Micro
 import           Prelude                hiding (unlines)
 
+import qualified Brick.Focus as Focus
 import           Brick.Focus            (focusGetCurrent, focusNext)
 import           Brick.Main             (continue, halt)
 import           Brick.Types            (BrickEvent (..), EventM, Next, handleEventLensed)
@@ -95,6 +96,18 @@ toggleFocus =
            then note & Note.focusRing %~ focusNext
             else note)
 
+addNote :: UTCTime -> [Note] -> [Note]
+addNote ct xs =
+    let i = succ $ maximum $ map _id xs
+        x = Note
+                i
+                False
+                True
+                (Field "" (editorText (Resource i Title) Nothing ""))
+                (Field "" (editorText (Resource i Content) Nothing ""))
+                (Focus.focusRing [Resource i Title, Resource i Content]) ct
+     in sort $ x : xs
+
 updateTime :: UTCTime -> [Note] -> [Note]
 updateTime ct = map (\note@(Note i a l t c foc ut) -> if a then Note i a l t c foc ct else note)
 
@@ -103,10 +116,11 @@ updateTime ct = map (\note@(Note i a l t c foc ut) -> if a then Note i a l t c f
 --
 -- Tmux Blocks meta/alt
 eventHandler :: St -> BrickEvent Resource e -> EventM Resource (Next St)
-eventHandler st (VtyEvent ev)  =
+eventHandler st (VtyEvent ev)  = do
+    ct <- liftIO getCurrentTime
     let editing = isEditing st
         editingTitle = isEditingTitle st
-    in case ev of
+    case ev of
         -- Ignoring
         EvKey KEnter [] | editingTitle -> continue st
         -- Toggling focus
@@ -120,14 +134,13 @@ eventHandler st (VtyEvent ev)  =
         EvKey (KChar 'g') [MCtrl] | editing -> continue (st & notes %~ lockActive)
         EvKey (KChar 'o') [MCtrl] -> continue (st & notes %~ unlockActive)
         EvKey (KChar 's') [MCtrl] -> continue (st & notes %~ lockActive)
+        -- Create
+        EvKey (KChar 'n') [MCtrl] | not editing -> continue (st & notes %~ addNote ct)
         -- Stop
         EvKey (KChar 'g') [MCtrl] -> halt st
         EvKey (KChar 'c') [MCtrl] -> halt st
         -- Editor event
-        _ | editing -> do
-            ct <- liftIO getCurrentTime
-            let st' = st & notes %~ updateTime ct
-            continue =<< handleEventLensed st' updateUnlockedEditor handleEditorEvent ev
+        _ | editing -> continue =<< handleEventLensed (st & notes %~ updateTime ct) updateUnlockedEditor handleEditorEvent ev
         _ -> continue st
 eventHandler st _ = continue st
 
