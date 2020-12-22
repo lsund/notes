@@ -47,6 +47,7 @@ library
     , pretty-simple
     , split
     , text
+    , text-zipper
     , time
     , transformers
     , vty
@@ -71,6 +72,7 @@ executable notes
     , pretty-simple
     , split
     , text
+    , text-zipper
     , time
     , transformers
     , vty
@@ -96,6 +98,7 @@ test-suite notes-test
     , pretty-simple
     , split
     , text
+    , text-zipper
     , time
     , transformers
     , vty

@@ -18,7 +18,7 @@ import           Brick.Focus                (FocusRing, focusGetCurrent, withFoc
 import           Brick.Markup               (markup, (@?))
 import           Brick.Types                (Padding (..), Widget)
 import           Brick.Util                 (on)
-import           Brick.Widgets.Border       (borderAttr, borderWithLabel, hBorderWithLabel)
+import           Brick.Widgets.Border       (borderAttr, borderWithLabel)
 import           Brick.Widgets.Border.Style (ascii)
 import           Brick.Widgets.Center       (center)
 import           Brick.Widgets.Core         (hBox, hLimit, padTop, txt, updateAttrMap, vLimit, withAttr,
@@ -95,9 +95,8 @@ renderUnlocked note =
 
 renderMany :: [Note] -> Widget Resource
 renderMany notes =
-    hBorderWithLabel (txt "Existing notes")
-    <=> hBox (map
-                (\note -> if _locked note then render note  else renderUnlocked note)
-                notes)
+    hBox (map
+            (\note -> if _locked note then render note  else renderUnlocked note)
+            notes)
 
 

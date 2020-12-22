@@ -33,6 +33,7 @@ dependencies:
 - pretty-simple
 - transformers
 - time
+- text-zipper
 
 library:
   source-dirs: src

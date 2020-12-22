@@ -40,7 +40,9 @@ prettyRender = txt . toStrict . pString . show
 
 draw :: St -> [Widget Resource]
 draw st =
-    Note.renderMany (st^.notes) :  [hBorderWithLabel (str "State") <=> center (prettyRender (st^.notes))]
+    [Note.renderMany (st^.notes)
+    <=>  hBorderWithLabel (str "State")
+    <=> center (prettyRender (st^.notes))]
 
 -------------------------------------------------------------------------------
 --  Event handler

@@ -4,17 +4,18 @@ module Event where
 
 import           Control.Monad.IO.Class (liftIO)
 import           Data.List              hiding (unlines)
-import           Data.Maybe             (fromJust)
+import           Data.Maybe             (fromJust, isJust)
 import           Data.Text              (Text, unlines)
+import           Data.Text.Zipper
 import           Data.Time.Clock
 import           Lens.Micro
 import           Prelude                hiding (unlines)
 
-import qualified Brick.Focus as Focus
 import           Brick.Focus            (focusGetCurrent, focusNext)
+import qualified Brick.Focus            as Focus
 import           Brick.Main             (continue, halt)
 import           Brick.Types            (BrickEvent (..), EventM, Next, handleEventLensed)
-import           Brick.Widgets.Edit     (Editor, editorText, getEditContents, handleEditorEvent)
+import           Brick.Widgets.Edit     (Editor, editContentsL, editorText, getEditContents, handleEditorEvent)
 import           Graphics.Vty           (Event (EvKey), Key (KBackTab, KChar, KEnter), Modifier (MCtrl))
 
 import           Field                  (Field (..))
@@ -132,6 +133,15 @@ updateUnlockedEditor f st =
         updateEditor ed note | _active note && (not . _locked) note = note & focusedField note . Field.editor .~ ed
         updateEditor ed note = note
 
+
+-- TODO we can get the full word here
+-- This function returns everything to the right of the cursor
+showRight st =
+    let activeNote = st ^. notes . to (find _active)
+     in case activeNote of
+            Nothing -> Just "test"
+            Just x  -> (sequence . takeWhile isJust . map currentChar . iterate moveRight) (x ^. Note.content . Field.editor . editContentsL)
+
 -------------------------------------------------------------------------------
 -- Main
 --
@@ -161,6 +171,10 @@ eventHandler st (VtyEvent ev)  = do
         -- Create / Delete
         EvKey (KChar 'n') [MCtrl] | not editing -> continue (st & notes %~ addNote ct)
         EvKey (KChar 'd') [MCtrl] | not editing -> continue (st & notes %~ deleteNote)
+        -- Follow link
+        EvKey (KChar 'l') [MCtrl] | editing -> do
+            liftIO $ print $ showRight st
+            continue st
         -- Stop
         EvKey (KChar 'g') [MCtrl] -> halt st
         EvKey (KChar 'c') [MCtrl] -> halt st
