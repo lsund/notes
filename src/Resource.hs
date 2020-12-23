@@ -10,12 +10,12 @@ import           Lens.Micro.TH
 import           Prim
 
 data Resource = Resource
-                  { _noteid    :: Id
+                  { _noteid    :: Int
                   , _fieldName :: FieldName
                   }
   deriving (Show, Eq, Ord)
 
-allResources :: [Id] -> [Resource]
+allResources :: [Int] -> [Resource]
 allResources xs = map (`Resource` Title) xs ++ map (`Resource` Content) xs
 
 makeLenses ''Resource

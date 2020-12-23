@@ -49,12 +49,12 @@ isEditingTitle st = isEditing st && case focusedResource st of Just (Resource _ 
 -------------------------------------------------------------------------------
 -- Toggling Active
 
-activateOnId :: Integer -> [Note] -> [Note]
+activateOnId :: Int -> [Note] -> [Note]
 activateOnId id  = map (\note -> if _id note == id then note { _active = True } else note { _active = False })
 
 -- There should be exactly one active note at all times. Otherwise, something
 -- is wrong with this function
-activate :: (Integer -> Integer) -> [Note] -> [Note]
+activate :: (Int -> Int) -> [Note] -> [Note]
 activate next xs =
     let maxIndex = maximum $ map _id xs
      in case find _active xs of
@@ -103,7 +103,6 @@ addNote ct xs =
                 (Focus.focusRing [Resource i Title, Resource i Content]) ct
      in sort $ x : xs
 
--- Maybe the most expensive operation with this implementation?
 deleteNote :: [Note] -> [Note]
 deleteNote xs =
     let oneLess = foldr (\note@(Note _ a _ _ _ _ _) acc -> if a then acc else note : acc) [] xs

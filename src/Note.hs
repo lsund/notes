@@ -32,7 +32,7 @@ import           Prim
 import           Resource
 
 data Note = Note
-              { _id          :: Integer
+              { _id          :: Int
               , _active      :: Bool
               , _locked      :: Bool
               , _title       :: Field
