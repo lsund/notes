@@ -106,13 +106,14 @@ addNote ct xs =
 -- Maybe the most expensive operation with this implementation?
 deleteNote :: [Note] -> [Note]
 deleteNote xs =
-    let oneLess = foldl (\acc note@(Note _ a _ _ _ _ _) -> if a then acc else note : acc) [] xs
-        (_, reIndexed) = foldl
-                        (\(i, acc) note@(Note _ a l (Field t te) (Field c ce) foc ut) ->
+    let oneLess = foldr (\note@(Note _ a _ _ _ _ _) acc -> if a then acc else note : acc) [] xs
+        maxIndex = fromIntegral $ pred $ length oneLess
+        (_, reIndexed) = foldr
+                        (\note@(Note _ a l (Field t te) (Field c ce) foc ut) (i, acc) ->
                             let title' = Field t (editorText (Resource i Title) Nothing t)
                                 content' = Field c (editorText (Resource i Content) Nothing c)
-                             in (succ i, Note i a l title' content' foc ut :  acc))
-                        (0, [])
+                             in (pred i, Note i a l title' content' foc ut :  acc))
+                        (maxIndex, [])
                         oneLess
                              in reIndexed & ix 0 . Note.active .~ True
 

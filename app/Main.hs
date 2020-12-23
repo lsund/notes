@@ -35,14 +35,14 @@ import           State
 -- Rendering
 --
 
-prettyRender :: [Note] -> Widget Resource
-prettyRender = txt . toStrict . pString . show
+renderStructure :: Show a => a -> Widget Resource
+renderStructure = txt . toStrict . pString . show
 
 draw :: St -> [Widget Resource]
 draw st =
     [Note.renderMany (st^.notes)
     <=>  hBorderWithLabel (str "State")
-    <=> center (prettyRender (st^.notes))]
+    <=> center (renderStructure (st^.notes . to head))]
 
 -------------------------------------------------------------------------------
 --  Event handler
@@ -85,7 +85,7 @@ main = do
         unless exists $  writeFile dbfile ""
         xs <- deserialize dbfile
         case xs of
-            Nothing -> putStrLn "Notes.hs: Could not deserialize json"
+            Nothing -> putStrLn "notes: Could not deserialize json"
             Just xs -> do
                 st <- defaultMain theApp $ initialState xs
                 writeFile dbfile ""
