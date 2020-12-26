@@ -18,9 +18,9 @@ import           Brick.Types            (BrickEvent (..), EventM, Next, handleEv
 import           Brick.Widgets.Edit     (Editor, editContentsL, editorText, getEditContents, handleEditorEvent)
 import           Graphics.Vty           (Event (EvKey), Key (KBackTab, KChar, KEnter), Modifier (MCtrl))
 
-import           Field                  (Field (..))
+import           Field                  (Field (..), editor)
 import qualified Field
-import           Note                   (Note (..), focusRing, locked)
+import           Note                   (Note (..), focusRing, locked, active, updated, title, content)
 import qualified Note
 import           Prim
 import           Resource
@@ -37,11 +37,11 @@ focusedResource' note = focusGetCurrent (note ^. focusRing)
 
 focusedField :: Functor f => Note -> (Field -> f Field) -> Note -> f Note
 focusedField note = case focusedResource' note of
-                Just (Resource _ Title) -> Note.title
-                _                       -> Note.content
+                Just (Resource _ Title) -> title
+                _                       -> content
 
 isEditing :: St -> Bool
-isEditing st = (not . null) (filter (\n -> _active n && (not . _locked) n) (st ^. notes))
+isEditing st = (not . null) (filter (\note -> note ^. active && not (note ^. locked)) (st ^. notes))
 
 isEditingTitle :: St -> Bool
 isEditingTitle st = isEditing st && case focusedResource st of Just (Resource _ Title) -> True; _ -> False
@@ -50,43 +50,45 @@ isEditingTitle st = isEditing st && case focusedResource st of Just (Resource _ 
 -- Toggling Active
 
 activateOnId :: Int -> [Note] -> [Note]
-activateOnId id  = map (\note -> if _id note == id then note { _active = True } else note { _active = False })
+activateOnId id  = map (\note -> if note ^. Note.id == id then note & active .~ True else note & active .~ False)
 
 -- There should be exactly one active note at all times. Otherwise, something
 -- is wrong with this function
 activate :: (Int -> Int) -> [Note] -> [Note]
 activate next xs =
     let maxIndex = maximum $ map _id xs
-     in case find _active xs of
-      Nothing         -> error "Should not happen"
-      Just activeNote -> activateOnId (nextIndex (_id activeNote) maxIndex) xs
+        index = case find (^. active) xs of
+                    Nothing         -> 0
+                    Just activeNote -> nextIndex (activeNote ^. Note.id) maxIndex
+    in activateOnId index xs
     where
         nextIndex aid mid | next aid > mid = 0
         nextIndex aid mid | next aid < 0 = mid
         nextIndex aid _   = next aid
 
 unlockActive :: [Note] -> [Note]
-unlockActive = map (\note@(Note i a l (Field t _) (Field c _) foc _ _) ->
-                        if a
-                              then let tt = editorText (Resource i Title) Nothing t
-                                       tc = editorText (Resource i Content) Nothing c
-                                    in note & Note.title . Field.editor .~ tt & Note.content . Field.editor .~ tc & locked .~ False
+unlockActive = map (\note ->
+                        if note ^. active
+                           then let i = (note ^. Note.id)
+                                    tt = editorText (Resource i Title) Nothing (note ^. title . Field.content)
+                                    tc = editorText (Resource i Content) Nothing (note ^. content . Field.content)
+                                in note & title . Field.editor .~ tt & content . Field.editor .~ tc & locked .~ False
                         else note)
 
 lockActive :: [Note] -> [Note]
 lockActive =
-    map (\note@(Note i a l (Field t te) (Field c ce) _ _ _) ->
-        if a
-           then let ce' = unlines (getEditContents ce)
-                    te' = unlines (getEditContents te)
-                 in note & Note.title . Field.content .~ te' & Note.content . Field.content .~ ce' & locked .~ True
+    map (\note ->
+        if note ^. active
+           then let ce' = unlines (getEditContents (note ^. content . Field.editor))
+                    te' = unlines (getEditContents (note ^. title . Field.editor))
+                 in note & Note.title . Field.content .~ te' & content . Field.content .~ ce' & locked .~ True
             else note)
 
 -------------------------------------------------------------------------------
 -- Toggling Focus
 
 toggleFocus :: [Note] -> [Note]
-toggleFocus = map (\note@(Note _ a _  _ _ _ _ _) -> if a then note & Note.focusRing %~ focusNext else note)
+toggleFocus = map (\note -> if note ^. active then note & Note.focusRing %~ focusNext else note)
 
 -------------------------------------------------------------------------------
     -- Create / Delete
@@ -107,7 +109,7 @@ addNote ct xs =
 
 deleteNote :: [Note] -> [Note]
 deleteNote xs =
-    let oneLess = foldr (\note@(Note _ a _ _ _ _ _ _) acc -> if a then acc else note : acc) [] xs
+    let oneLess = foldr (\note acc -> if note ^. active then acc else note : acc) [] xs
         maxIndex = fromIntegral $ pred $ length oneLess
         (_, reIndexed) = foldr
                         (\note@(Note _ a l (Field t te) (Field c ce) foc ct ut) (i, acc) ->
@@ -122,7 +124,7 @@ deleteNote xs =
     -- Editor Event
 
 updateTime :: UTCTime -> [Note] -> [Note]
-updateTime currentTime = map (\note@(Note i a l t c foc ct ut) -> if a then Note i a l t c foc ct currentTime else note)
+updateTime currentTime = map (\note -> if note ^. active then note & updated .~ currentTime else note)
 
 updateUnlockedEditor :: Functor f => (Editor Text Resource -> f (Editor Text Resource)) -> St -> f St
 updateUnlockedEditor f st =
@@ -139,10 +141,9 @@ updateUnlockedEditor f st =
 -- TODO we can get the full word here
 -- This function returns everything to the right of the cursor
 showRight st =
-    let activeNote = st ^. notes . to (find _active)
-     in case activeNote of
-            Nothing -> Just "test"
-            Just x  -> (sequence . takeWhile isJust . map currentChar . iterate moveRight) (x ^. Note.content . Field.editor . editContentsL)
+    case st ^. notes . to (find _active)of
+      Nothing -> Just "Error"
+      Just x  -> (sequence . takeWhile isJust . map currentChar . iterate moveRight) (x ^. Note.content . Field.editor . editContentsL)
 
 -------------------------------------------------------------------------------
 -- Main
