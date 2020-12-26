@@ -4,7 +4,7 @@ module Event where
 
 import           Control.Monad.IO.Class (liftIO)
 import           Data.List              hiding (unlines)
-import           Data.Maybe             (fromJust, isJust)
+import           Data.Maybe             (isJust)
 import           Data.Text              (Text, unlines)
 import           Data.Text.Zipper
 import           Data.Time.Clock
@@ -26,11 +26,8 @@ import           Prim
 import           Resource
 import           State
 
-
 focusedResource :: St -> Maybe Resource
-focusedResource st =
-    let activeNote = fromJust $ find _active (st ^. notes)
-     in focusedResource' activeNote
+focusedResource st = find (^. active) (st ^. notes) >>= focusedResource'
 
 focusedResource' :: Note -> Maybe Resource
 focusedResource' note = focusGetCurrent (note ^. focusRing)
@@ -126,22 +123,21 @@ deleteNote xs =
 updateTime :: UTCTime -> [Note] -> [Note]
 updateTime currentTime = map (\note -> if note ^. active then note & updated .~ currentTime else note)
 
-updateUnlockedEditor :: Functor f => (Editor Text Resource -> f (Editor Text Resource)) -> St -> f St
-updateUnlockedEditor f st =
-    let  focusedEditor = case focusedResource st of
-                            Just (Resource _ Title) -> Field._editor (Note._title activeNote)
-                            _                       -> Field._editor (Note._content activeNote)
-     in (\editor' -> st & notes %~ map (updateEditor editor')) <$> f focusedEditor
+updateEditorFor :: Functor f => Note -> (Editor Text Resource -> f (Editor Text Resource)) -> St -> f St
+updateEditorFor note editor st =
+    let focusedEditor = case focusedResource st of
+                            Just (Resource _ Title) -> Field._editor (Note._title note)
+                            _                       -> Field._editor (Note._content note)
+     in (\editor' -> st & notes %~ map (updateEditor editor')) <$> editor focusedEditor
      where
-        activeNote = fromJust $ find _active (st ^. notes)
-        updateEditor ed note | _active note && (not . _locked) note = note & focusedField note . Field.editor .~ ed
+        updateEditor ed note | note ^. active && not (note ^. locked) = note & focusedField note . Field.editor .~ ed
         updateEditor ed note = note
 
 
 -- TODO we can get the full word here
 -- This function returns everything to the right of the cursor
 showRight st =
-    case st ^. notes . to (find _active)of
+    case st ^. notes . to (find (^. active)) of
       Nothing -> Just "Error"
       Just x  -> (sequence . takeWhile isJust . map currentChar . iterate moveRight) (x ^. Note.content . Field.editor . editContentsL)
 
@@ -159,30 +155,33 @@ eventHandler st (VtyEvent ev)  = do
         editingTitle = isEditingTitle st
     case ev of
       -- Ignoring
-        EvKey KEnter [] | editingTitle -> continue st
+        EvKey KEnter [] | editingTitle          -> continue st
         -- Toggling focus
-        EvKey (KChar '\t') [] | editing -> continue (st & notes %~ toggleFocus)
+        EvKey (KChar '\t') [] | editing         -> continue (st & notes %~ toggleFocus)
         -- Toggling active
-        EvKey (KChar '\t') [] -> continue (st & notes %~ activate succ)
-        EvKey KBackTab [] -> continue (st & notes %~ activate pred)
-        EvKey (KChar 'l') [] | not editing -> continue (st & notes %~ activate succ)
-        EvKey (KChar 'h') [] | not editing -> continue (st & notes %~ activate pred)
+        EvKey (KChar '\t') []                   -> continue (st & notes %~ activate succ)
+        EvKey KBackTab []                       -> continue (st & notes %~ activate pred)
+        EvKey (KChar 'l') [] | not editing      -> continue (st & notes %~ activate succ)
+        EvKey (KChar 'h') [] | not editing      -> continue (st & notes %~ activate pred)
         -- Lock/unlock
-        EvKey (KChar 'g') [MCtrl] | editing -> continue (st & notes %~ lockActive)
-        EvKey (KChar 'o') [MCtrl] -> continue (st & notes %~ unlockActive)
-        EvKey (KChar 's') [MCtrl] -> continue (st & notes %~ lockActive)
+        EvKey (KChar 'g') [MCtrl] | editing     -> continue (st & notes %~ lockActive)
+        EvKey (KChar 'o') [MCtrl]               -> continue (st & notes %~ unlockActive)
+        EvKey (KChar 's') [MCtrl]               -> continue (st & notes %~ lockActive)
         -- Create / Delete
         EvKey (KChar 'n') [MCtrl] | not editing -> continue (st & notes %~ addNote ct)
         EvKey (KChar 'd') [MCtrl] | not editing -> continue (st & notes %~ deleteNote)
         -- Follow link
-        EvKey (KChar 'l') [MCtrl] | editing -> do
+        EvKey (KChar 'l') [MCtrl] | editing     -> do
             liftIO $ print $ showRight st
             continue st
         -- Stop
-        EvKey (KChar 'g') [MCtrl] -> halt st
-        EvKey (KChar 'c') [MCtrl] -> halt st
+        EvKey (KChar 'g') [MCtrl]               -> halt st
+        EvKey (KChar 'c') [MCtrl]               -> halt st
         -- Editor event
-        _ | editing -> continue =<< handleEventLensed (st & notes %~ updateTime ct) updateUnlockedEditor handleEditorEvent ev
+        _ | editing ->
+            case find (^. active) (st ^. notes) of
+                Just activeNote -> continue =<< handleEventLensed (st & notes %~ updateTime ct) (updateEditorFor activeNote) handleEditorEvent ev
+                Nothing         -> continue st
         _ -> continue st
 eventHandler st _ = continue st
 
