@@ -66,7 +66,7 @@ activate next xs =
         nextIndex aid _   = next aid
 
 unlockActive :: [Note] -> [Note]
-unlockActive = map (\note@(Note i a l (Field t _) (Field c _) foc _) ->
+unlockActive = map (\note@(Note i a l (Field t _) (Field c _) foc _ _) ->
                         if a
                               then let tt = editorText (Resource i Title) Nothing t
                                        tc = editorText (Resource i Content) Nothing c
@@ -75,7 +75,7 @@ unlockActive = map (\note@(Note i a l (Field t _) (Field c _) foc _) ->
 
 lockActive :: [Note] -> [Note]
 lockActive =
-    map (\note@(Note i a l (Field t te) (Field c ce) _ _) ->
+    map (\note@(Note i a l (Field t te) (Field c ce) _ _ _) ->
         if a
            then let ce' = unlines (getEditContents ce)
                     te' = unlines (getEditContents te)
@@ -86,7 +86,7 @@ lockActive =
 -- Toggling Focus
 
 toggleFocus :: [Note] -> [Note]
-toggleFocus = map (\note@(Note _ a _  _ _ _ _) -> if a then note & Note.focusRing %~ focusNext else note)
+toggleFocus = map (\note@(Note _ a _  _ _ _ _ _) -> if a then note & Note.focusRing %~ focusNext else note)
 
 -------------------------------------------------------------------------------
     -- Create / Delete
@@ -100,18 +100,20 @@ addNote ct xs =
                 True
                 (Field "" (editorText (Resource i Title) Nothing ""))
                 (Field "" (editorText (Resource i Content) Nothing ""))
-                (Focus.focusRing [Resource i Title, Resource i Content]) ct
+                (Focus.focusRing [Resource i Title, Resource i Content])
+                ct
+                ct
      in sort $ x : xs
 
 deleteNote :: [Note] -> [Note]
 deleteNote xs =
-    let oneLess = foldr (\note@(Note _ a _ _ _ _ _) acc -> if a then acc else note : acc) [] xs
+    let oneLess = foldr (\note@(Note _ a _ _ _ _ _ _) acc -> if a then acc else note : acc) [] xs
         maxIndex = fromIntegral $ pred $ length oneLess
         (_, reIndexed) = foldr
-                        (\note@(Note _ a l (Field t te) (Field c ce) foc ut) (i, acc) ->
+                        (\note@(Note _ a l (Field t te) (Field c ce) foc ct ut) (i, acc) ->
                             let title' = Field t (editorText (Resource i Title) Nothing t)
                                 content' = Field c (editorText (Resource i Content) Nothing c)
-                             in (pred i, Note i a l title' content' foc ut :  acc))
+                             in (pred i, Note i a l title' content' foc ct ut :  acc))
                         (maxIndex, [])
                         oneLess
                              in reIndexed & ix 0 . Note.active .~ True
@@ -120,7 +122,7 @@ deleteNote xs =
     -- Editor Event
 
 updateTime :: UTCTime -> [Note] -> [Note]
-updateTime ct = map (\note@(Note i a l t c foc ut) -> if a then Note i a l t c foc ct else note)
+updateTime currentTime = map (\note@(Note i a l t c foc ct ut) -> if a then Note i a l t c foc ct currentTime else note)
 
 updateUnlockedEditor :: Functor f => (Editor Text Resource -> f (Editor Text Resource)) -> St -> f St
 updateUnlockedEditor f st =

@@ -5,9 +5,8 @@
 
 module Note where
 
-import           Data.Text                  (pack, unlines)
+import           Data.Text                  (unpack, unlines)
 import           Data.Time.Clock
-import           Data.Time.Format           (defaultTimeLocale, formatTime)
 import           GHC.Generics
 import           Lens.Micro
 import           Lens.Micro.TH
@@ -38,17 +37,19 @@ data Note = Note
               , _title       :: Field
               , _content     :: Field
               , _focusRing   :: FocusRing Resource
-              , _lastUpdated :: UTCTime
+              , _created     :: UTCTime
+              , _updated     :: UTCTime
               }
   deriving (Generic)
 
 makeLenses ''Note
 
 instance Show Note where
-    show (Note i a l t c f ut) =
+    show (Note i a l t c f ct ut) =
         "Note[" <> show  i <> "](active: " <> show  a
         <> ", locked: "  <> show l
-        <> ", last update time: " <> showLastUpdated ut
+        <> ", Created time: " <> (unpack . unparseTime) ct
+        <> ", last update time: " <> (unpack . unparseTime) ut
         <> ", title: " <>  show t
         <> ", content: " <> show c
         <> ", focused: " <> show (focusGetCurrent f) <> ")"
@@ -65,12 +66,8 @@ height = 10
 width :: Int
 width = 30
 
-showLastUpdated :: UTCTime -> String
-showLastUpdated = formatTime defaultTimeLocale formatStr
-
-
 renderMetadata :: Note -> Widget Resource
-renderMetadata note = padTop (Pad 2) $ shaded (pack (showLastUpdated (note ^. lastUpdated)))
+renderMetadata note = padTop (Pad 2) $ shaded (unparseTime (note ^. updated))
     where shaded c = markup (c @? "meta")
 
 render :: Note -> Widget Resource
