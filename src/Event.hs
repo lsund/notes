@@ -4,7 +4,8 @@ module Event where
 
 import           Control.Monad.IO.Class (liftIO)
 import           Data.List              hiding (unlines)
-import           Data.Text              (Text, unlines)
+import           Data.List.HT           (takeUntil)
+import           Data.Text              (Text, unlines, pack)
 import           Data.Text.Zipper
 import           Data.Time.Clock
 import           Lens.Micro
@@ -137,7 +138,7 @@ scanWord :: St -> (TextZipper Text -> TextZipper Text) -> Maybe String
 scanWord st moveFn = st ^. notes . to (find (^. active)) >>= scanWord'
     where scanWord' note =
                 let editContents = (note ^. Note.content . Field.editor . editContentsL)
-                    scan = (sequence . takeWhile notSpace . map currentChar . takeWhileIncl changed . iterate moveFn)
+                    scan = (sequence . takeWhile notSpace . map currentChar . takeUntil (not . changed) . iterate moveFn)
                  in scan editContents
           changed zipper = cursorPosition (moveFn zipper) /= cursorPosition zipper
           notSpace Nothing    = False
@@ -174,14 +175,20 @@ eventHandler st (VtyEvent ev)  = do
         EvKey (KChar 'n') [MCtrl] | not editing -> continue (st & notes %~ addNote ct)
         EvKey (KChar 'd') [MCtrl] | not editing -> continue (st & notes %~ deleteNote)
         -- Follow link
-        EvKey (KChar 'l') [MCtrl] | editing     -> do
-            liftIO $ appendFile "log.txt" $ maybe "\n" (<> "\n") $ (reverse <$> scanWord st moveLeft) <> (scanWord st moveRight >>= tailMay)
-            continue st
+        EvKey (KChar 'l') [MCtrl] | editing     ->
+            case (reverse <$> scanWord st moveLeft) <> (scanWord st moveRight >>= tailMay) of
+                  Just word ->
+                    case find (\note -> note ^. title . Field.content == pack word <> "\n") (st ^. notes) of
+                        Just note -> continue (st & notes %~ activateOnId (note ^. Note.id))
+                        Nothing -> continue st
+                        -- liftIO $ appendFile "log.txt" (show x <> "\n")
+                        -- continue st
+                  Nothing -> continue st
         -- Stop
         EvKey (KChar 'g') [MCtrl]               -> halt st
         EvKey (KChar 'c') [MCtrl]               -> halt st
         -- Editor event
-        _ | editing ->
+        _ | editing                             ->
             case find (^. active) (st ^. notes) of
                 Just activeNote -> continue =<< handleEventLensed (st & notes %~ updateTime ct) (updateEditorFor activeNote) handleEditorEvent ev
                 Nothing         -> continue st

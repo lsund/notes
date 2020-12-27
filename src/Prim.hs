@@ -11,8 +11,3 @@ formatStr = "%d-%m-%Y %l:%M %p"
 
 unparseTime :: UTCTime -> Text
 unparseTime = pack . formatTime defaultTimeLocale formatStr
-
-takeWhileIncl :: (a -> Bool) -> [a] -> [a]
-takeWhileIncl _    []                = []
-takeWhileIncl pred (x : xs) | pred x = x : takeWhileIncl pred xs
-takeWhileIncl pred (x : xs)          = [x]
