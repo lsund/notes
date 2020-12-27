@@ -4,12 +4,12 @@ module Event where
 
 import           Control.Monad.IO.Class (liftIO)
 import           Data.List              hiding (unlines)
-import           Data.Maybe             (isJust)
 import           Data.Text              (Text, unlines)
 import           Data.Text.Zipper
 import           Data.Time.Clock
 import           Lens.Micro
 import           Prelude                hiding (unlines)
+import           Safe                   (tailMay)
 
 import           Brick.Focus            (focusGetCurrent, focusNext)
 import qualified Brick.Focus            as Focus
@@ -20,7 +20,7 @@ import           Graphics.Vty           (Event (EvKey), Key (KBackTab, KChar, KE
 
 import           Field                  (Field (..), editor)
 import qualified Field
-import           Note                   (Note (..), focusRing, locked, active, updated, title, content)
+import           Note                   (Note (..), active, content, focusRing, locked, title, updated)
 import qualified Note
 import           Prim
 import           Resource
@@ -91,9 +91,9 @@ toggleFocus = map (\note -> if note ^. active then note & Note.focusRing %~ focu
     -- Create / Delete
 
 addNote :: UTCTime -> [Note] -> [Note]
-addNote ct xs =
-    let i = succ $ maximum $ map _id xs
-        x = Note
+addNote ct notes =
+    let i = succ $ maximum $ map (^. Note.id) notes
+        note = Note
                 i
                 False
                 True
@@ -102,7 +102,7 @@ addNote ct xs =
                 (Focus.focusRing [Resource i Title, Resource i Content])
                 ct
                 ct
-     in sort $ x : xs
+     in sort $ note : notes
 
 deleteNote :: [Note] -> [Note]
 deleteNote xs =
@@ -133,13 +133,16 @@ updateEditorFor note editor st =
         updateEditor ed note | note ^. active && not (note ^. locked) = note & focusedField note . Field.editor .~ ed
         updateEditor ed note = note
 
-
--- TODO we can get the full word here
--- This function returns everything to the right of the cursor
-showRight st =
-    case st ^. notes . to (find (^. active)) of
-      Nothing -> Just "Error"
-      Just x  -> (sequence . takeWhile isJust . map currentChar . iterate moveRight) (x ^. Note.content . Field.editor . editContentsL)
+scanWord :: St -> (TextZipper Text -> TextZipper Text) -> Maybe String
+scanWord st moveFn = st ^. notes . to (find (^. active)) >>= scanWord'
+    where scanWord' note =
+                let editContents = (note ^. Note.content . Field.editor . editContentsL)
+                    scan = (sequence . takeWhile notSpace . map currentChar . takeWhileIncl changed . iterate moveFn)
+                 in scan editContents
+          changed zipper = cursorPosition (moveFn zipper) /= cursorPosition zipper
+          notSpace Nothing    = False
+          notSpace (Just ' ') = False
+          notSpace _          = True
 
 -------------------------------------------------------------------------------
 -- Main
@@ -172,7 +175,7 @@ eventHandler st (VtyEvent ev)  = do
         EvKey (KChar 'd') [MCtrl] | not editing -> continue (st & notes %~ deleteNote)
         -- Follow link
         EvKey (KChar 'l') [MCtrl] | editing     -> do
-            liftIO $ print $ showRight st
+            liftIO $ appendFile "log.txt" $ maybe "\n" (<> "\n") $ (reverse <$> scanWord st moveLeft) <> (scanWord st moveRight >>= tailMay)
             continue st
         -- Stop
         EvKey (KChar 'g') [MCtrl]               -> halt st
