@@ -1,4 +1,4 @@
-# Notes.hs [WIP]
+# Notes.hs
 
 This is a notetaking program built inspired by
 [Tiddlywiki](https://tiddlywiki.com/)(TW) and built with
@@ -6,34 +6,30 @@ This is a notetaking program built inspired by
 
 I like Tiddlywiki because of its lightweight feel and how frictionless it is
 taking and linking notes. However, there are some aspects that I do not
-particularly like:
+particularly like about TW:
 
-1. It is a web-application, which means a lot of clicking around. I like
-   applications that are mouse-free, but of course that is just personal
-   preference.
+1. A lot of clicking. I'd rather quickly take and link notes using the keyboard
+   only.
 
-2. The "out of the box" TW UI that comes out of the box is not that good. The
-   only way to organize your open notes is closing them and reopening them in a
-   different order. There are animations that make the interaction slower.
-   It also doesn't look great, and bloated with a lot of options that
-   isn't directly helpful to the essential process of taking and linking notes.
+2. The UI "out of the box". The only way to organize your open notes is closing
+   them and reopening them in a different order. There are animations that make
+   the interaction slower. The styles are not great, and bloated with a lot of
+   options that isn't directly helpful to the essential process of taking and
+   linking notes.
 
-3. TW has the feel of a being a SPA, but it has no dedicated backend. Instead,
-   it stores its state in the DOM and it is up to you to figure out how to
-   persist the changes to disk. You can use a Node implementation that TW
-   provides, or any WebDAV. With my WebDAV implementation, I could not figure
-   out a way to automatically update links when their corresponding tiddler
-   names changed.  As a result, anytime I update the name of a tiddler, I
-   potentially break multiple links in other tiddlers and have to verify this
-   manually every time.
+3. The feel of a being a SPA, but it has no real dedicated backend. TW stores
+   its state in the DOM and it is up to you to figure out how to persist the
+   changes to disk. You can use a Node implementation that TW provides, or any
+   WebDAV. With my WebDAV implementation, I could not figure out a way to
+   automatically update links when their corresponding tiddler names changed.
+   As a result, anytime I update the name of a tiddler, I potentially break
+   multiple links in other tiddlers and have to verify this manually every
+   time.
 
 ## What This is
 
-This is an implementation of a note-taking program that is implemented with the
-three points above serving as guidelines for what it shouldn't be.
-The overall goal, is to be able  quickly and easily take and link notes in a
-bi-directional, non-linear way, with a simple and quick UI, that doesn't look
-or feel bad.
+This is a note-taking program focused on the ease of taking and linking notes
+in a bi-directional, non-linear way.
 
 1. In a terminal environment, we don't need the mouse at all and have a
    isolated environment for customizable hotkeys. We don't need to implement
@@ -55,28 +51,32 @@ or feel bad.
 I use stack for development. To create an executable:
 ```
 stack install
-~/.local/bin/notes
 ```
 
-## Current status [WIP]
+## Usage
 
-* Can persist and read whole state onto disk.
+Start the program with the path to the database (JSON) file:
 
-* Can render notes
+```
+~/.local/bin/notes my-database.json
+```
 
-* Can cycle between notes
+If `my-database.json` does not exist, it will be created as an empty array.
 
-* Can update the content and titles of notes
+### Keybindings
 
-## Todo
+#### While not editing
 
-* Create new notes
+* `C-n` to create a new note
+* `Tab` or `S-Tab` cycle focus between notes
+* `C-o` edit the focused note
 
-* Bullet lists
+#### While editing
 
-* Links
-
-* Tags
+* `Tab` switches focus between title and content
+* `C-g` Stop editing a note
+* `C-l` Jump to note with title under cursor or create a new note titled that
+  word.
 
 ## Alternatives to Notes.hs
 

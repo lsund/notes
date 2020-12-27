@@ -11,7 +11,7 @@ import           Data.Text.Zipper
 import           Data.Time.Clock
 import           Lens.Micro
 import           Prelude                hiding (unlines)
-import           Safe                   (tailMay)
+import           Safe                   (tailMay, maximumMay)
 
 import           Brick.Focus            (focusGetCurrent, focusNext)
 import qualified Brick.Focus            as Focus
@@ -45,6 +45,9 @@ isEditing st = (not . null) (filter (\note -> note ^. active && not (note ^. loc
 isEditingTitle :: St -> Bool
 isEditingTitle st = isEditing st && case focusedResource st of Just (Resource _ Title) -> True; _ -> False
 
+maxId :: [Note] -> Int
+maxId = fromMaybe 0 . maximumMay . map (^. Note.id)
+
 -------------------------------------------------------------------------------
 -- Toggling Active
 
@@ -52,17 +55,15 @@ activateOnId :: Int -> [Note] -> [Note]
 activateOnId id  = map (\note -> if note ^. Note.id == id then note & active .~ True else note & active .~ False)
 
 activateLast :: [Note] -> [Note]
-activateLast xs = activateOnId maxId xs
-    where maxId = maximum $ map (^. Note.id) xs
+activateLast xs = activateOnId (maxId xs) xs
 
 -- There should be exactly one active note at all times. Otherwise, something
 -- is wrong with this function
 activate :: (Int -> Int) -> [Note] -> [Note]
 activate next xs =
-    let maxIndex = maximum $ map (^. Note.id) xs
-        index = case find (^. active) xs of
+    let index = case find (^. active) xs of
                     Nothing         -> 0
-                    Just activeNote -> nextIndex (activeNote ^. Note.id) maxIndex
+                    Just activeNote -> nextIndex (activeNote ^. Note.id) (maxId xs)
     in activateOnId index xs
     where
         nextIndex aid mid | next aid > mid = 0
@@ -98,11 +99,11 @@ toggleFocus = map (\note -> if note ^. active then note & Note.focusRing %~ focu
 
 addNote :: Maybe Text -> UTCTime -> [Note] -> [Note]
 addNote title ct notes =
-    let i = succ $ maximum $ map (^. Note.id) notes
+    let i = maybe 0 succ (maximumMay (map (^. Note.id) notes))
         title' = fromMaybe "" title
         note = Note
                 i
-                False
+                (null notes)
                 True
                 (Field title' (editorText (Resource i Title) Nothing title'))
                 (Field "" (editorText (Resource i Content) Nothing ""))

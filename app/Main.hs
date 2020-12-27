@@ -41,8 +41,8 @@ renderStructure = txt . toStrict . pString . show
 draw :: St -> [Widget Resource]
 draw st =
     [Note.renderMany (st^.notes)
-    <=>  hBorderWithLabel (str "State")
-    <=> center (renderStructure (st^.notes . to head))]
+    <=>  hBorderWithLabel (str "State")]
+    -- <=> center (renderStructure (st^.notes . to head))]
 
 -------------------------------------------------------------------------------
 --  Event handler
@@ -82,7 +82,7 @@ main = do
     else do
         let dbfile = head args
         exists <- doesFileExist dbfile
-        unless exists $  writeFile dbfile ""
+        unless exists $  writeFile dbfile "[]"
         xs <- deserialize dbfile
         case xs of
             Nothing -> putStrLn "notes: Could not deserialize json"
