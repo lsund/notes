@@ -5,7 +5,8 @@ module Event where
 import           Control.Monad.IO.Class (liftIO)
 import           Data.List              hiding (unlines)
 import           Data.List.HT           (takeUntil)
-import           Data.Text              (Text, unlines, pack)
+import           Data.Maybe             (fromMaybe)
+import           Data.Text              (Text, pack, unlines)
 import           Data.Text.Zipper
 import           Data.Time.Clock
 import           Lens.Micro
@@ -50,11 +51,15 @@ isEditingTitle st = isEditing st && case focusedResource st of Just (Resource _ 
 activateOnId :: Int -> [Note] -> [Note]
 activateOnId id  = map (\note -> if note ^. Note.id == id then note & active .~ True else note & active .~ False)
 
+activateLast :: [Note] -> [Note]
+activateLast xs = activateOnId maxId xs
+    where maxId = maximum $ map (^. Note.id) xs
+
 -- There should be exactly one active note at all times. Otherwise, something
 -- is wrong with this function
 activate :: (Int -> Int) -> [Note] -> [Note]
 activate next xs =
-    let maxIndex = maximum $ map _id xs
+    let maxIndex = maximum $ map (^. Note.id) xs
         index = case find (^. active) xs of
                     Nothing         -> 0
                     Just activeNote -> nextIndex (activeNote ^. Note.id) maxIndex
@@ -91,14 +96,15 @@ toggleFocus = map (\note -> if note ^. active then note & Note.focusRing %~ focu
 -------------------------------------------------------------------------------
     -- Create / Delete
 
-addNote :: UTCTime -> [Note] -> [Note]
-addNote ct notes =
+addNote :: Maybe Text -> UTCTime -> [Note] -> [Note]
+addNote title ct notes =
     let i = succ $ maximum $ map (^. Note.id) notes
+        title' = fromMaybe "" title
         note = Note
                 i
                 False
                 True
-                (Field "" (editorText (Resource i Title) Nothing ""))
+                (Field title' (editorText (Resource i Title) Nothing title'))
                 (Field "" (editorText (Resource i Content) Nothing ""))
                 (Focus.focusRing [Resource i Title, Resource i Content])
                 ct
@@ -172,7 +178,7 @@ eventHandler st (VtyEvent ev)  = do
         EvKey (KChar 'o') [MCtrl]               -> continue (st & notes %~ unlockActive)
         EvKey (KChar 's') [MCtrl]               -> continue (st & notes %~ lockActive)
         -- Create / Delete
-        EvKey (KChar 'n') [MCtrl] | not editing -> continue (st & notes %~ addNote ct)
+        EvKey (KChar 'n') [MCtrl] | not editing -> continue (st & notes %~ addNote Nothing ct)
         EvKey (KChar 'd') [MCtrl] | not editing -> continue (st & notes %~ deleteNote)
         -- Follow link
         EvKey (KChar 'l') [MCtrl] | editing     ->
@@ -180,9 +186,7 @@ eventHandler st (VtyEvent ev)  = do
                   Just word ->
                     case find (\note -> note ^. title . Field.content == pack word <> "\n") (st ^. notes) of
                         Just note -> continue (st & notes %~ activateOnId (note ^. Note.id))
-                        Nothing -> continue st
-                        -- liftIO $ appendFile "log.txt" (show x <> "\n")
-                        -- continue st
+                        Nothing   -> continue ((st & notes %~ addNote ((Just . pack) word) ct) & notes %~ activateLast)
                   Nothing -> continue st
         -- Stop
         EvKey (KChar 'g') [MCtrl]               -> halt st
