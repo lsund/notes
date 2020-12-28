@@ -41,8 +41,8 @@ renderStructure = txt . toStrict . pString . show
 draw :: St -> [Widget Resource]
 draw st =
     [Note.renderMany (st^.notes)
-    <=>  hBorderWithLabel (str "State")]
-    -- <=> center (renderStructure (st^.notes . to head))]
+    <=>  hBorderWithLabel (str "State")
+    <=> center (renderStructure (st^.notes . to head))]
 
 -------------------------------------------------------------------------------
 --  Event handler

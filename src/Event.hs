@@ -52,7 +52,7 @@ maxId = fromMaybe 0 . maximumMay . map (^. Note.id)
 -- Toggling Active
 
 activateOnId :: Int -> [Note] -> [Note]
-activateOnId id  = map (\note -> if note ^. Note.id == id then note & active .~ True else note & active .~ False)
+activateOnId id  = map (\note -> if note ^. Note.id == id then note & active .~ True else note & active .~ False & locked .~ True)
 
 activateLast :: [Note] -> [Note]
 activateLast xs = activateOnId (maxId xs) xs
@@ -107,13 +107,13 @@ addNote title ct notes =
                 True
                 (Field title' (editorText (Resource i Title) Nothing title'))
                 (Field "" (editorText (Resource i Content) Nothing ""))
-                (Focus.focusRing [Resource i Title, Resource i Content])
+                (Focus.focusRing [Resource i Content, Resource i Title])
                 ct
                 ct
      in sort $ note : notes
 
-deleteNote :: [Note] -> [Note]
-deleteNote xs =
+deleteNote :: Int -> [Note] -> [Note]
+deleteNote id xs =
     let oneLess = foldr (\note acc -> if note ^. active then acc else note : acc) [] xs
         maxIndex = fromIntegral $ pred $ length oneLess
         (_, reIndexed) = foldr
@@ -123,7 +123,7 @@ deleteNote xs =
                              in (pred i, Note i a l title' content' foc ct ut :  acc))
                         (maxIndex, [])
                         oneLess
-                             in reIndexed & ix 0 . Note.active .~ True
+                             in reIndexed & ix (max (pred id) 0) . Note.active .~ True
 
 -------------------------------------------------------------------------------
     -- Editor Event
@@ -131,8 +131,8 @@ deleteNote xs =
 updateTime :: UTCTime -> [Note] -> [Note]
 updateTime currentTime = map (\note -> if note ^. active then note & updated .~ currentTime else note)
 
-updateEditorFor :: Functor f => Note -> (Editor Text Resource -> f (Editor Text Resource)) -> St -> f St
-updateEditorFor note editor st =
+handleCharacter :: Functor f => Note -> (Editor Text Resource -> f (Editor Text Resource)) -> St -> f St
+handleCharacter note editor st =
     let focusedEditor = case focusedResource st of
                             Just (Resource _ Title) -> Field._editor (Note._title note)
                             _                       -> Field._editor (Note._content note)
@@ -145,12 +145,26 @@ scanWord :: St -> (TextZipper Text -> TextZipper Text) -> Maybe String
 scanWord st moveFn = st ^. notes . to (find (^. active)) >>= scanWord'
     where scanWord' note =
                 let editContents = (note ^. Note.content . Field.editor . editContentsL)
-                    scan = (sequence . takeWhile notSpace . map currentChar . takeUntil (not . changed) . iterate moveFn)
+                    scan = sequence . takeWhile notSpace . map currentChar . takeUntil (not . changed) . iterate moveFn
+                    -- scan = sequence . takeWhile notSpace . map currentChar . takeUntil ((== 0) . fst . cursorPosition) . iterate moveFn
                  in scan editContents
           changed zipper = cursorPosition (moveFn zipper) /= cursorPosition zipper
           notSpace Nothing    = False
           notSpace (Just ' ') = False
           notSpace _          = True
+
+-- TODO
+-- killWord = map (\note -> if note ^. active then note & Note.content . Field.editor . editContentsL %~ scan else note)
+--     where scan editor = last $ (takeUntil foo . iterate deletePrevChar) editor
+--           foo x = (not . changed) x || isSpace x
+--           changed zipper = cursorPosition (moveLeft zipper) /= cursorPosition zipper
+--           isSpace x | currentChar x == (Just ' ') = True
+--           isSpace _          = False
+
+
+nudgeCursor :: (TextZipper Text -> TextZipper Text) -> [Note] -> [Note]
+nudgeCursor moveFn = map (\note -> if note ^. active then note & Note.content . Field.editor . editContentsL %~ moveFn else note)
+
 
 -------------------------------------------------------------------------------
 -- Main
@@ -160,43 +174,53 @@ scanWord st moveFn = st ^. notes . to (find (^. active)) >>= scanWord'
 --
 -- Tmux Blocks meta/alt
 eventHandler :: St -> BrickEvent Resource e -> EventM Resource (Next St)
-eventHandler st (VtyEvent ev)  = do
-    ct <- liftIO getCurrentTime
-    let editing = isEditing st
-        editingTitle = isEditingTitle st
-    case ev of
-      -- Ignoring
-        EvKey KEnter [] | editingTitle          -> continue st
-        -- Toggling focus
-        EvKey (KChar '\t') [] | editing         -> continue (st & notes %~ toggleFocus)
-        -- Toggling active
-        EvKey (KChar '\t') []                   -> continue (st & notes %~ activate succ)
-        EvKey KBackTab []                       -> continue (st & notes %~ activate pred)
-        EvKey (KChar 'l') [] | not editing      -> continue (st & notes %~ activate succ)
-        EvKey (KChar 'h') [] | not editing      -> continue (st & notes %~ activate pred)
-        -- Lock/unlock
-        EvKey (KChar 'g') [MCtrl] | editing     -> continue (st & notes %~ lockActive)
-        EvKey (KChar 'o') [MCtrl]               -> continue (st & notes %~ unlockActive)
-        EvKey (KChar 's') [MCtrl]               -> continue (st & notes %~ lockActive)
-        -- Create / Delete
-        EvKey (KChar 'n') [MCtrl] | not editing -> continue (st & notes %~ addNote Nothing ct)
-        EvKey (KChar 'd') [MCtrl] | not editing -> continue (st & notes %~ deleteNote)
-        -- Follow link
-        EvKey (KChar 'l') [MCtrl] | editing     ->
-            case (reverse <$> scanWord st moveLeft) <> (scanWord st moveRight >>= tailMay) of
-                  Just word ->
-                    case find (\note -> note ^. title . Field.content == pack word <> "\n") (st ^. notes) of
-                        Just note -> continue (st & notes %~ activateOnId (note ^. Note.id))
-                        Nothing   -> continue ((st & notes %~ addNote ((Just . pack) word) ct) & notes %~ activateLast)
-                  Nothing -> continue st
-        -- Stop
-        EvKey (KChar 'g') [MCtrl]               -> halt st
-        EvKey (KChar 'c') [MCtrl]               -> halt st
-        -- Editor event
-        _ | editing                             ->
-            case find (^. active) (st ^. notes) of
-                Just activeNote -> continue =<< handleEventLensed (st & notes %~ updateTime ct) (updateEditorFor activeNote) handleEditorEvent ev
-                Nothing         -> continue st
-        _ -> continue st
+eventHandler st (VtyEvent ev)  =
+    case find (^. active) (st ^. notes) of
+        Nothing         -> continue st
+        Just activeNote -> do
+            ct <- liftIO getCurrentTime
+            let editing = isEditing st
+                editingTitle = isEditingTitle st
+                activeId = activeNote ^. Note.id
+            case ev of
+            -- Ignoring
+                EvKey KEnter [] | editingTitle          -> continue st
+                -- Toggling focus
+                EvKey (KChar '\t') [] | editing         -> continue (st & notes %~ toggleFocus)
+                -- Toggling active
+                EvKey (KChar '\t') []                   -> continue (st & notes %~ activate succ)
+                EvKey KBackTab []                       -> continue (st & notes %~ activate pred)
+                EvKey (KChar 'l') [] | not editing      -> continue (st & notes %~ activate succ)
+                EvKey (KChar 'h') [] | not editing      -> continue (st & notes %~ activate pred)
+                -- Lock/unlock
+                EvKey (KChar 'g') [MCtrl] | editing     -> continue (st & notes %~ lockActive)
+                EvKey (KChar 'o') [MCtrl]               -> continue (st & notes %~ unlockActive)
+                EvKey (KChar 's') [MCtrl]               -> continue (st & notes %~ lockActive)
+                -- Create / Delete
+                EvKey (KChar 'n') [MCtrl] | not editing -> continue (st & notes %~ addNote Nothing ct)
+                EvKey (KChar 'd') [MCtrl] | not editing -> continue (st & notes %~ deleteNote activeId)
+                -- Follow link
+                EvKey (KChar 'l') [MCtrl] | editing     ->
+                    case (reverse <$> scanWord st moveLeft) <> (scanWord st moveRight >>= tailMay) of
+                        Just word ->
+                            case find (\note -> note ^. title . Field.content == pack word) (st ^. notes) of
+                                Just note -> continue (st & notes %~ activateOnId (note ^. Note.id))
+                                Nothing   -> continue ((st & notes %~ addNote ((Just . pack) word) ct) & notes %~ activateLast)
+                        Nothing -> continue st
+                -- Stop
+                EvKey (KChar 'g') [MCtrl]               -> halt st
+                EvKey (KChar 'c') [MCtrl]               -> halt st
+                -- Movement while editing
+                -- Editor event
+                -- EvKey (KChar 'w') [MCtrl] | editing     -> continue (st & notes %~ killWord)
+                EvKey (KChar 'b') [MCtrl] | editing     -> continue (st & notes %~ nudgeCursor moveLeft)
+                EvKey (KChar 'f') [MCtrl] | editing     -> continue (st & notes %~ nudgeCursor moveRight)
+                EvKey (KChar 'n') [MCtrl] | editing     -> continue (st & notes %~ nudgeCursor moveDown)
+                EvKey (KChar 'p') [MCtrl] | editing     -> continue (st & notes %~ nudgeCursor moveUp)
+                _ | editing                             ->
+                    case find (^. active) (st ^. notes) of
+                        Just activeNote -> continue =<< handleEventLensed (st & notes %~ updateTime ct) (handleCharacter activeNote) handleEditorEvent ev
+                        Nothing         -> continue st
+                _ -> continue =<< handleEventLensed (st & notes %~ updateTime ct) (handleCharacter activeNote) handleEditorEvent ev
 eventHandler st _ = continue st
 
