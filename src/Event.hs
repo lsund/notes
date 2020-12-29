@@ -165,11 +165,8 @@ scanWordTo st dir = st ^. notes . to (find (^. active)) >>= scanWordTo'
         scanWordTo' note =
                 let editor = (note ^. Note.content . Field.editor . editContentsL)
                     (moveFn, limit) = if dir == Left then (moveLeft, Just 0) else (moveRight, getLineLimit editor)
-                    scan = sequence . takeWhile notSpace . map currentChar . takeUntil (atLineLimit (fromMaybe 0 limit))  . iterate moveFn
+                    scan = sequence . takeWhile (maybe False (not . isSpace)) . map currentChar . takeUntil (atLineLimit (fromMaybe 0 limit))  . iterate moveFn
                  in scan editor
-        notSpace Nothing    = False
-        notSpace (Just ' ') = False
-        notSpace _          = True
 
 scanWord :: St -> Maybe Text
 scanWord st = strip . pack <$> (reverse <$> scanWordTo st Left) <> (scanWordTo st Right >>= tailMay)
@@ -179,9 +176,9 @@ killWord = map (\note -> if note ^. active then note & Note.content . Field.edit
     where
           deleteWhitespace = lastMay . (takeUntil (not . maybe False isSpace . currentChar) . iterate (moveLeft . deleteChar))
           deleteWord = lastMay . (takeUntil (\editor -> (maybe False isSpace . currentChar) editor || atLineBegin editor) . iterate (moveLeft . deleteChar))
-          deleteFn editor = maybe editor deleteAt0 $ deleteWhitespace editor >>= deleteWord
           deleteAt0 editor | atLineBegin editor = deleteChar editor
           deleteAt0 editor = editor
+          deleteFn editor = maybe editor deleteAt0 $ deleteWhitespace editor >>= deleteWord
 
 
 nudgeCursor :: (TextZipper Text -> TextZipper Text) -> [Note] -> [Note]
