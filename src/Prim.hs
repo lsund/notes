@@ -6,6 +6,8 @@ import           Data.Time.Clock  (UTCTime)
 import           Data.Time.Format (defaultTimeLocale, formatTime)
 import           Prelude          hiding (dropWhile)
 
+data Direction = Left | Right deriving (Eq)
+
 data FieldName = Title | Content deriving (Show, Eq, Ord)
 
 formatStr :: String

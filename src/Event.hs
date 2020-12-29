@@ -3,7 +3,7 @@
 module Event where
 
 import           Control.Monad.IO.Class (liftIO)
-import           Data.Char              (isSpace, isPrint)
+import           Data.Char              (isSpace)
 import           Data.List              hiding (unlines)
 import           Data.List.HT           (takeUntil)
 import           Data.Maybe             (fromMaybe)
@@ -11,8 +11,8 @@ import           Data.Text              (Text, pack, unlines)
 import           Data.Text.Zipper
 import           Data.Time.Clock
 import           Lens.Micro
-import           Prelude                hiding (unlines)
-import           Safe                   (maximumMay, tailMay)
+import           Prelude                hiding (unlines, Left, Right)
+import           Safe                   (maximumMay, tailMay, lastMay)
 
 import           Brick.Focus            (focusGetCurrent, focusNext)
 import qualified Brick.Focus            as Focus
@@ -138,7 +138,13 @@ deleteNote id xs =
                              in reIndexed & ix (max (pred id) 0) . Note.active .~ True
 
 -------------------------------------------------------------------------------
-    -- Editor Event
+-- Editor Event
+
+atLineLimit :: Int ->TextZipper a -> Bool
+atLineLimit lim = (== lim) . snd . cursorPosition
+
+atLineBegin :: TextZipper a -> Bool
+atLineBegin = atLineLimit 0
 
 updateTime :: UTCTime -> [Note] -> [Note]
 updateTime currentTime = map (\note -> if note ^. active then note & updated .~ currentTime else note)
@@ -153,27 +159,29 @@ handleCharacter note editor st =
         updateEditor ed note | note ^. active && not (note ^. locked) = note & focusedField note . Field.editor .~ ed
         updateEditor ed note = note
 
-scanWordTo :: St -> (TextZipper Text -> TextZipper Text) -> Maybe String
-scanWordTo st moveFn = st ^. notes . to (find (^. active)) >>= scanWordTo'
-    where scanWordTo' note =
-                let editContents = (note ^. Note.content . Field.editor . editContentsL)
-                    scan = sequence . takeWhile notSpace . map currentChar . takeUntil (not . changed) . iterate moveFn
-                    -- scan = sequence . takeWhile notSpace . map currentChar . takeUntil ((== 0) . fst . cursorPosition) . iterate moveFn
-                 in scan editContents
-          changed zipper = cursorPosition (moveFn zipper) /= cursorPosition zipper
-          notSpace Nothing    = False
-          notSpace (Just ' ') = False
-          notSpace _          = True
+scanWordTo :: St -> Direction -> Maybe String
+scanWordTo st dir = st ^. notes . to (find (^. active)) >>= scanWordTo'
+    where
+        scanWordTo' note =
+                let editor = (note ^. Note.content . Field.editor . editContentsL)
+                    (moveFn, limit) = if dir == Left then (moveLeft, Just 0) else (moveRight, getLineLimit editor)
+                    scan = sequence . takeWhile notSpace . map currentChar . takeUntil (atLineLimit (fromMaybe 0 limit))  . iterate moveFn
+                 in scan editor
+        notSpace Nothing    = False
+        notSpace (Just ' ') = False
+        notSpace _          = True
 
 scanWord :: St -> Maybe Text
-scanWord st = strip . pack <$> (reverse <$> scanWordTo st moveLeft) <> (scanWordTo st moveRight >>= tailMay)
+scanWord st = strip . pack <$> (reverse <$> scanWordTo st Left) <> (scanWordTo st Right >>= tailMay)
 
-killWord = map (\note -> if note ^. active then note & Note.content . Field.editor . editContentsL %~ scan . scanToWord else note)
-    where scanToWord editor = last $ (takeUntil (not . isJustSpace . currentChar) . iterate (moveLeft . deleteChar)) editor
-          scan editor = last $ (takeUntil (\x -> (isJustSpace . currentChar) x || (not . changed) x) . iterate (moveLeft . deleteChar)) editor
-          changed zipper = cursorPosition (moveLeft zipper) /= cursorPosition zipper
-          isJustSpace (Just x) | isSpace x || (not . isPrint) x = True
-          isJustSpace _        = False
+killWord :: [Note] -> [Note]
+killWord = map (\note -> if note ^. active then note & Note.content . Field.editor . editContentsL %~ deleteFn else note)
+    where
+          deleteWhitespace = lastMay . (takeUntil (not . maybe False isSpace . currentChar) . iterate (moveLeft . deleteChar))
+          deleteWord = lastMay . (takeUntil (\editor -> (maybe False isSpace . currentChar) editor || atLineBegin editor) . iterate (moveLeft . deleteChar))
+          deleteFn editor = maybe editor deleteAt0 $ deleteWhitespace editor >>= deleteWord
+          deleteAt0 editor | atLineBegin editor = deleteChar editor
+          deleteAt0 editor = editor
 
 
 nudgeCursor :: (TextZipper Text -> TextZipper Text) -> [Note] -> [Note]
@@ -215,7 +223,8 @@ eventHandler st (VtyEvent ev)  =
                 -- Follow link
                 EvKey (KChar 'l') [MCtrl] | editing     ->
                     case scanWord st of
-                        Just word -> case find (\note -> note ^. title . Field.content == word) (st ^. notes) of
+                        Just word ->
+                            case find (\note -> note ^. title . Field.content == word) (st ^. notes) of
                                         Just note -> continue (st & notes %~ lockActive & notes %~ activateOnId (note ^. Note.id))
                                         Nothing   -> continue ((st & notes %~ lockActive & notes %~ addNote (Just word) ct) & notes %~ activateLast)
                         Nothing -> continue st
