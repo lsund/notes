@@ -49,6 +49,8 @@ If `my-database.json` does not exist, it will be created as an empty array.
 * `C-g` Stop editing a note
 * `C-l` Jump to note with title under cursor or create a new note titled that
   word.
+* Furthermore, the usual `C-a`, `C-u`, `C-e`, `C-w` and `C-d` are supported,
+  and they work similarly as in a standard unix shell.
 
 ## Alternatives to Notes.hs
 
