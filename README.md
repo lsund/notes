@@ -3,7 +3,7 @@
 ## What?
 
 This is a notetaking program built inspired by
-[Tiddlywiki](https://tiddlywiki.com/)(TW) and built with
+[Tiddlywiki](https://tiddlywiki.com/) (TW) and built with
 [Brick](https://github.com/jtdaugherty/brick).
 
 This is an attempt to mimic some of TW's functionality in a terminal UI, with
@@ -14,7 +14,7 @@ focus on keyboard ergonomics and simplicity.
 Every productivity / organizing tool I've encountered have been either too
 simplistic or too complicated, with a lot of unused features.
 
-TW falls into the second category. Furthermore, it lives in the browser and
+TW (in my opinion) falls into the second category. Furthermore, it lives in the browser and
 that leads to a lot of clicking. I started this project to try to express my
 preference of a non-linear note-taking tool.
 
