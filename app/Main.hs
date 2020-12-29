@@ -18,7 +18,7 @@ import           Brick.Main           (App (..), appAttrMap, appChooseCursor, ap
 import           Brick.Types          (CursorLocation, Widget)
 import           Brick.Util           (fg, on)
 import           Brick.Widgets.Border (hBorderWithLabel)
-import           Brick.Widgets.Center (center)
+-- import           Brick.Widgets.Center (center)
 import           Brick.Widgets.Core   (str, txt, (<=>))
 import           Brick.Widgets.Edit   (editAttr, editFocusedAttr)
 import           Graphics.Vty         (black, blue, cyan, defAttr, green, white, yellow)
@@ -41,8 +41,8 @@ renderStructure = txt . toStrict . pString . show
 draw :: St -> [Widget Resource]
 draw st =
     [Note.renderMany (st^.notes)
-    <=>  hBorderWithLabel (str "State")
-    <=> center (renderStructure (st^.notes . to head))]
+    <=>  hBorderWithLabel (str "State")]
+    -- <=> center (renderStructure (st^.notes . to head))]
 
 -------------------------------------------------------------------------------
 --  Event handler

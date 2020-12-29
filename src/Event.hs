@@ -3,6 +3,7 @@
 module Event where
 
 import           Control.Monad.IO.Class (liftIO)
+import           Data.Char              (isSpace, isPrint)
 import           Data.List              hiding (unlines)
 import           Data.List.HT           (takeUntil)
 import           Data.Maybe             (fromMaybe)
@@ -58,7 +59,7 @@ maxId = fromMaybe 0 . maximumMay . map (^. Note.id)
 -- Toggling Active
 
 activateOnId :: Int -> [Note] -> [Note]
-activateOnId id  = map (\note -> if note ^. Note.id == id then note & active .~ True else note & active .~ False & locked .~ True)
+activateOnId id  = map (\note -> if note ^. Note.id == id then note & active .~ True else note & active .~ False)
 
 activateLast :: [Note] -> [Note]
 activateLast xs = activateOnId (maxId xs) xs
@@ -85,14 +86,19 @@ unlockActive = map (\note ->
                                 in note & title . Field.editor .~ tt & content . Field.editor .~ tc & locked .~ False
                         else note)
 
+-- Lock and save
 lockActive :: [Note] -> [Note]
 lockActive =
     map (\note ->
         if note ^. active
            then let ce' = unlines (getEditContents (note ^. content . Field.editor))
-                    te' = unlines (getEditContents (note ^. title . Field.editor))
+                    te' = (strip . unlines) (getEditContents (note ^. title . Field.editor))
                  in note & Note.title . Field.content .~ te' & content . Field.content .~ ce' & locked .~ True
             else note)
+
+
+lockAll :: [Note] -> [Note]
+lockAll = map (& locked .~ True)
 
 -------------------------------------------------------------------------------
 -- Toggling Focus
@@ -162,13 +168,12 @@ scanWordTo st moveFn = st ^. notes . to (find (^. active)) >>= scanWordTo'
 scanWord :: St -> Maybe Text
 scanWord st = strip . pack <$> (reverse <$> scanWordTo st moveLeft) <> (scanWordTo st moveRight >>= tailMay)
 
--- TODO
--- killWord = map (\note -> if note ^. active then note & Note.content . Field.editor . editContentsL %~ scan else note)
---     where scan editor = last $ (takeUntil foo . iterate deletePrevChar) editor
---           foo x = (not . changed) x || isSpace x
---           changed zipper = cursorPosition (moveLeft zipper) /= cursorPosition zipper
---           isSpace x | currentChar x == (Just ' ') = True
---           isSpace _          = False
+killWord = map (\note -> if note ^. active then note & Note.content . Field.editor . editContentsL %~ scan . scanToWord else note)
+    where scanToWord editor = last $ (takeUntil (not . isJustSpace . currentChar) . iterate (moveLeft . deleteChar)) editor
+          scan editor = last $ (takeUntil (\x -> (isJustSpace . currentChar) x || (not . changed) x) . iterate (moveLeft . deleteChar)) editor
+          changed zipper = cursorPosition (moveLeft zipper) /= cursorPosition zipper
+          isJustSpace (Just x) | isSpace x || (not . isPrint) x = True
+          isJustSpace _        = False
 
 
 nudgeCursor :: (TextZipper Text -> TextZipper Text) -> [Note] -> [Note]
@@ -210,21 +215,16 @@ eventHandler st (VtyEvent ev)  =
                 -- Follow link
                 EvKey (KChar 'l') [MCtrl] | editing     ->
                     case scanWord st of
-                        Just word ->
-                            do
-                                doLog $ find (\note -> note ^. title . Field.content == word) (st ^. notes)
-                                doLog $ map (\note -> note ^. title . Field.content) (st ^. notes)
-                                doLog word
-                                case find (\note -> note ^. title . Field.content == word) (st ^. notes) of
-                                    Just note -> continue (st & notes %~ activateOnId (note ^. Note.id))
-                                    Nothing   -> continue ((st & notes %~ addNote (Just word) ct) & notes %~ activateLast)
+                        Just word -> case find (\note -> note ^. title . Field.content == word) (st ^. notes) of
+                                        Just note -> continue (st & notes %~ lockActive & notes %~ activateOnId (note ^. Note.id))
+                                        Nothing   -> continue ((st & notes %~ lockActive & notes %~ addNote (Just word) ct) & notes %~ activateLast)
                         Nothing -> continue st
                 -- Stop
                 EvKey (KChar 'g') [MCtrl]               -> halt st
                 EvKey (KChar 'c') [MCtrl]               -> halt st
                 -- Movement while editing
                 -- Editor event
-                -- EvKey (KChar 'w') [MCtrl] | editing     -> continue (st & notes %~ killWord)
+                EvKey (KChar 'w') [MCtrl] | editing     -> continue (st & notes %~ killWord)
                 EvKey (KChar 'b') [MCtrl] | editing     -> continue (st & notes %~ nudgeCursor moveLeft)
                 EvKey (KChar 'f') [MCtrl] | editing     -> continue (st & notes %~ nudgeCursor moveRight)
                 EvKey (KChar 'n') [MCtrl] | editing     -> continue (st & notes %~ nudgeCursor moveDown)
