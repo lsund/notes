@@ -11,7 +11,7 @@ import           Data.Text.Zipper
 import           Data.Time.Clock
 import           Lens.Micro
 import           Prelude                hiding (unlines)
-import           Safe                   (tailMay, maximumMay)
+import           Safe                   (maximumMay, tailMay)
 
 import           Brick.Focus            (focusGetCurrent, focusNext)
 import qualified Brick.Focus            as Focus
@@ -27,6 +27,12 @@ import qualified Note
 import           Prim
 import           Resource
 import           State
+
+-------------------------------------------------------------------------------
+-- Util
+
+doLog :: Show a => a -> EventM Resource ()
+doLog x = liftIO $ appendFile "resources/ignore/log.txt" $ show x <> "\n"
 
 focusedResource :: St -> Maybe Resource
 focusedResource st = find (^. active) (st ^. notes) >>= focusedResource'
@@ -141,9 +147,9 @@ handleCharacter note editor st =
         updateEditor ed note | note ^. active && not (note ^. locked) = note & focusedField note . Field.editor .~ ed
         updateEditor ed note = note
 
-scanWord :: St -> (TextZipper Text -> TextZipper Text) -> Maybe String
-scanWord st moveFn = st ^. notes . to (find (^. active)) >>= scanWord'
-    where scanWord' note =
+scanWordTo :: St -> (TextZipper Text -> TextZipper Text) -> Maybe String
+scanWordTo st moveFn = st ^. notes . to (find (^. active)) >>= scanWordTo'
+    where scanWordTo' note =
                 let editContents = (note ^. Note.content . Field.editor . editContentsL)
                     scan = sequence . takeWhile notSpace . map currentChar . takeUntil (not . changed) . iterate moveFn
                     -- scan = sequence . takeWhile notSpace . map currentChar . takeUntil ((== 0) . fst . cursorPosition) . iterate moveFn
@@ -152,6 +158,9 @@ scanWord st moveFn = st ^. notes . to (find (^. active)) >>= scanWord'
           notSpace Nothing    = False
           notSpace (Just ' ') = False
           notSpace _          = True
+
+scanWord :: St -> Maybe Text
+scanWord st = strip . pack <$> (reverse <$> scanWordTo st moveLeft) <> (scanWordTo st moveRight >>= tailMay)
 
 -- TODO
 -- killWord = map (\note -> if note ^. active then note & Note.content . Field.editor . editContentsL %~ scan else note)
@@ -164,7 +173,6 @@ scanWord st moveFn = st ^. notes . to (find (^. active)) >>= scanWord'
 
 nudgeCursor :: (TextZipper Text -> TextZipper Text) -> [Note] -> [Note]
 nudgeCursor moveFn = map (\note -> if note ^. active then note & Note.content . Field.editor . editContentsL %~ moveFn else note)
-
 
 -------------------------------------------------------------------------------
 -- Main
@@ -201,11 +209,15 @@ eventHandler st (VtyEvent ev)  =
                 EvKey (KChar 'd') [MCtrl] | not editing -> continue (st & notes %~ deleteNote activeId)
                 -- Follow link
                 EvKey (KChar 'l') [MCtrl] | editing     ->
-                    case (reverse <$> scanWord st moveLeft) <> (scanWord st moveRight >>= tailMay) of
+                    case scanWord st of
                         Just word ->
-                            case find (\note -> note ^. title . Field.content == pack word) (st ^. notes) of
-                                Just note -> continue (st & notes %~ activateOnId (note ^. Note.id))
-                                Nothing   -> continue ((st & notes %~ addNote ((Just . pack) word) ct) & notes %~ activateLast)
+                            do
+                                doLog $ find (\note -> note ^. title . Field.content == word) (st ^. notes)
+                                doLog $ map (\note -> note ^. title . Field.content) (st ^. notes)
+                                doLog word
+                                case find (\note -> note ^. title . Field.content == word) (st ^. notes) of
+                                    Just note -> continue (st & notes %~ activateOnId (note ^. Note.id))
+                                    Nothing   -> continue ((st & notes %~ addNote (Just word) ct) & notes %~ activateLast)
                         Nothing -> continue st
                 -- Stop
                 EvKey (KChar 'g') [MCtrl]               -> halt st

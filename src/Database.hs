@@ -44,7 +44,7 @@ load (SerializedNote id active locked title content created updated) =
         id
         active
         locked
-        (Field title (Edit.editor (Resource id Title) Nothing title))
+        (Field (strip title) (Edit.editor (Resource id Title) Nothing (strip title)))
         (Field content (Edit.editor (Resource id Content) Nothing content))
         (Focus.focusRing [Resource id Content, Resource id Title])
         (parseTime created)
