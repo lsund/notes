@@ -172,7 +172,12 @@ scanWord :: St -> Maybe Text
 scanWord st = strip . pack <$> (reverse <$> scanWordTo st Left) <> (scanWordTo st Right >>= tailMay)
 
 killWord :: [Note] -> [Note]
-killWord = map (\note -> if note ^. active then note & Note.content . Field.editor . editContentsL %~ deleteFn else note)
+killWord = map (\note -> if note ^. active
+                            then let fieldFn = case note ^. focusRing . to focusGetCurrent of
+                                                Just (Resource _ Title) -> Note.title
+                                                _ -> Note.content
+                                  in note & fieldFn . Field.editor . editContentsL %~ deleteFn
+                            else note)
     where
           deleteWhitespace = lastMay . (takeUntil (not . maybe False isSpace . currentChar) . iterate (moveLeft . deleteChar))
           deleteWord = lastMay . (takeUntil (\editor -> (maybe False isSpace . currentChar) editor || atLineBegin editor) . iterate (moveLeft . deleteChar))
