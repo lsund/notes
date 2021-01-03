@@ -164,8 +164,8 @@ scanWordTo st dir = st ^. notes . to (find (^. active)) >>= scanWordTo'
     where
         scanWordTo' note =
                 let editor = (note ^. Note.content . Field.editor . editContentsL)
-                    (moveFn, limit) = if dir == Left then (moveLeft, Just 0) else (moveRight, getLineLimit editor)
-                    scan = sequence . takeWhile (maybe False (not . isSpace)) . map currentChar . takeUntil (atLineLimit (fromMaybe 0 limit))  . iterate moveFn
+                    (moveFn, limit) = if dir == Left then (moveLeft, 0) else (moveRight, noteWidth)
+                    scan = sequence . takeWhile (maybe False (not . isSpace)) . map currentChar . takeUntil (atLineLimit limit)  . iterate moveFn
                  in scan editor
 
 scanWord :: St -> Maybe Text

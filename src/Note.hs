@@ -5,12 +5,12 @@
 
 module Note where
 
-import           Data.Text                  (Text, lines, unlines, unpack, unwords, words)
+import           Data.Text                  (Text, lines, unlines, unpack, words)
 import           Data.Time.Clock
 import           GHC.Generics
 import           Lens.Micro
 import           Lens.Micro.TH
-import           Prelude                    hiding (id, lines, unlines, unwords, words)
+import           Prelude                    hiding (id, lines, unlines, words)
 
 import           Brick.AttrMap              (applyAttrMappings)
 import           Brick.Focus                (FocusRing, focusGetCurrent, withFocusRing)
@@ -60,12 +60,6 @@ instance Eq Note where
 instance Ord Note where
     note1 `compare` note2 = _id note1 `compare` _id note2
 
-height :: Int
-height = 10
-
-width :: Int
-width = 30
-
 renderMetadata :: Note -> Widget Resource
 renderMetadata note = padTop (Pad 2) $ shaded (unparseTime (note ^. updated))
     where shaded c = markup (c @? "meta")
@@ -82,8 +76,8 @@ render titles note =
     updateAttrMap (applyAttrMappings (borderStyle (note ^. active))) $
     withBorderStyle ascii $
     borderWithLabel (withAttr "title" $ txt (note ^. (title . Field.content))) $
-        hLimit width $
-        vLimit height $
+        hLimit noteWidth $
+        vLimit noteHeight $
         center $
             renderContent titles (note ^. (content . Field.content))
             <=> renderMetadata note
@@ -95,7 +89,7 @@ renderUnlocked note =
     let titleEditor = withFocusRing (note ^. focusRing) (renderEditor (txt . unlines)) (note ^. (title . Field.editor))
         contentEditor = withFocusRing (note ^. focusRing) (renderEditor (txt . unlines)) (note ^. (content . Field.editor))
      in
-       hLimit width (vLimit 1 titleEditor) <=> hLimit width (vLimit height contentEditor)
+       hLimit noteWidth (vLimit 1 titleEditor) <=> hLimit noteWidth (vLimit noteHeight contentEditor)
 
 renderMany :: [Note] -> Widget Resource
 renderMany notes =

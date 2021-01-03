@@ -10,6 +10,12 @@ data Direction = Left | Right deriving (Eq)
 
 data FieldName = Title | Content deriving (Show, Eq, Ord)
 
+noteHeight :: Int
+noteHeight = 10
+
+noteWidth :: Int
+noteWidth = 30
+
 formatStr :: String
 formatStr = "%d-%m-%Y %l:%M %p"
 
