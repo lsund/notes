@@ -94,7 +94,7 @@ renderUnlocked note =
 renderMany :: [Note] -> Widget Resource
 renderMany notes =
     hBox (map
-            (\note -> if _locked note then render (map (^. title . Field.content) notes) note  else renderUnlocked note)
+            (\note -> if _locked note then render (map (^. title . Field.content) notes) note else renderUnlocked note)
             notes)
 
 

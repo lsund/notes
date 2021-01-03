@@ -25,6 +25,7 @@ source-repository head
 library
   exposed-modules:
       Database
+      Editor
       Event
       Field
       Note

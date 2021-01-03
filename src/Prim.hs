@@ -14,7 +14,7 @@ noteHeight :: Int
 noteHeight = 10
 
 noteWidth :: Int
-noteWidth = 30
+noteWidth = 40
 
 formatStr :: String
 formatStr = "%d-%m-%Y %l:%M %p"

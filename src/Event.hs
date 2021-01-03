@@ -2,28 +2,26 @@
 {-# LANGUAGE RankNTypes        #-}
 module Event where
 
-import           Control.Monad.IO.Class (liftIO)
-import           Data.Char              (isSpace)
-import           Data.List              hiding (unlines)
-import           Data.List.HT           (takeUntil)
-import           Data.Maybe             (fromMaybe)
-import           Data.Text              (Text, pack, unlines)
-import           Data.Text.Zipper
-import           Data.Time.Clock
-import           Lens.Micro
-import           Prelude                hiding (unlines, Left, Right)
-import           Safe                   (maximumMay, tailMay, lastMay)
-
-import           Brick.Focus            (focusGetCurrent, focusNext)
+import           Brick.Focus            (focusNext)
 import qualified Brick.Focus            as Focus
 import           Brick.Main             (continue, halt)
 import           Brick.Types            (BrickEvent (..), EventM, Next, handleEventLensed)
-import           Brick.Widgets.Edit     (Editor, editContentsL, editorText, getEditContents, handleEditorEvent)
+import           Brick.Widgets.Edit     (editorText, getEditContents, handleEditorEvent)
+import           Control.Monad.IO.Class (liftIO)
+import           Data.List              hiding (unlines)
+import           Data.Maybe             (fromMaybe)
+import           Data.Text              (Text, unlines)
+import           Data.Text.Zipper
+import           Data.Time.Clock
 import           Graphics.Vty           (Event (EvKey), Key (KBackTab, KChar, KEnter), Modifier (MCtrl))
+import           Lens.Micro
+import           Prelude                hiding (Left, Right, unlines)
+import           Safe                   (maximumMay)
 
+import           Editor
 import           Field                  (Field (..), editor)
 import qualified Field
-import           Note                   (Note (..), active, content, focusRing, locked, title, updated)
+import           Note                   (Note (..), active, content, focusRing, locked, title)
 import qualified Note
 import           Prim
 import           Resource
@@ -34,17 +32,6 @@ import           State
 
 doLog :: Show a => a -> EventM Resource ()
 doLog x = liftIO $ appendFile "resources/ignore/log.txt" $ show x <> "\n"
-
-focusedResource :: St -> Maybe Resource
-focusedResource st = find (^. active) (st ^. notes) >>= focusedResource'
-
-focusedResource' :: Note -> Maybe Resource
-focusedResource' note = focusGetCurrent (note ^. focusRing)
-
-focusedField :: Functor f => Note -> (Field -> f Field) -> Note -> f Note
-focusedField note = case focusedResource' note of
-                Just (Resource _ Title) -> title
-                _                       -> content
 
 isEditing :: St -> Bool
 isEditing st = (not . null) (filter (\note -> note ^. active && not (note ^. locked)) (st ^. notes))
@@ -138,58 +125,6 @@ deleteNote id xs =
                              in reIndexed & ix (max (pred id) 0) . Note.active .~ True
 
 -------------------------------------------------------------------------------
--- Editor Event
-
-atLineLimit :: Int ->TextZipper a -> Bool
-atLineLimit lim = (== lim) . snd . cursorPosition
-
-atLineBegin :: TextZipper a -> Bool
-atLineBegin = atLineLimit 0
-
-updateTime :: UTCTime -> [Note] -> [Note]
-updateTime currentTime = map (\note -> if note ^. active then note & updated .~ currentTime else note)
-
-handleCharacter :: Functor f => Note -> (Editor Text Resource -> f (Editor Text Resource)) -> St -> f St
-handleCharacter note editor st =
-    let focusedEditor = case focusedResource st of
-                            Just (Resource _ Title) -> Field._editor (Note._title note)
-                            _                       -> Field._editor (Note._content note)
-     in (\editor' -> st & notes %~ map (updateEditor editor')) <$> editor focusedEditor
-     where
-        updateEditor ed note | note ^. active && not (note ^. locked) = note & focusedField note . Field.editor .~ ed
-        updateEditor ed note = note
-
-scanWordTo :: St -> Direction -> Maybe String
-scanWordTo st dir = st ^. notes . to (find (^. active)) >>= scanWordTo'
-    where
-        scanWordTo' note =
-                let editor = (note ^. Note.content . Field.editor . editContentsL)
-                    (moveFn, limit) = if dir == Left then (moveLeft, 0) else (moveRight, noteWidth)
-                    scan = sequence . takeWhile (maybe False (not . isSpace)) . map currentChar . takeUntil (atLineLimit limit)  . iterate moveFn
-                 in scan editor
-
-scanWord :: St -> Maybe Text
-scanWord st = strip . pack <$> (reverse <$> scanWordTo st Left) <> (scanWordTo st Right >>= tailMay)
-
-killWord :: [Note] -> [Note]
-killWord = map (\note -> if note ^. active
-                            then let fieldFn = case note ^. focusRing . to focusGetCurrent of
-                                                Just (Resource _ Title) -> Note.title
-                                                _ -> Note.content
-                                  in note & fieldFn . Field.editor . editContentsL %~ deleteFn
-                            else note)
-    where
-          deleteWhitespace = lastMay . (takeUntil (not . maybe False isSpace . currentChar) . iterate (moveLeft . deleteChar))
-          deleteWord = lastMay . (takeUntil (\editor -> (maybe False isSpace . currentChar) editor || atLineBegin editor) . iterate (moveLeft . deleteChar))
-          deleteAt0 editor | atLineBegin editor = deleteChar editor
-          deleteAt0 editor = editor
-          deleteFn editor = maybe editor deleteAt0 $ deleteWhitespace editor >>= deleteWord
-
-
-nudgeCursor :: (TextZipper Text -> TextZipper Text) -> [Note] -> [Note]
-nudgeCursor moveFn = map (\note -> if note ^. active then note & Note.content . Field.editor . editContentsL %~ moveFn else note)
-
--------------------------------------------------------------------------------
 -- Main
 --
 -- Editor has C-e, C-a, C-d, C-k, C-u, arrows, enter, paste. Should probably
@@ -197,11 +132,15 @@ nudgeCursor moveFn = map (\note -> if note ^. active then note & Note.content . 
 --
 -- Tmux Blocks meta/alt
 eventHandler :: St -> BrickEvent Resource e -> EventM Resource (Next St)
-eventHandler st (VtyEvent ev)  =
+eventHandler st (VtyEvent ev)  = do
+    ct <- liftIO getCurrentTime
     case find (^. active) (st ^. notes) of
-        Nothing         -> continue st
+        Nothing         ->
+            case ev of
+                EvKey (KChar 'g') [MCtrl] -> halt st
+                EvKey (KChar 'c') [MCtrl] -> halt st
+                EvKey (KChar 'n') [MCtrl] -> continue (st & notes %~ addNote Nothing ct)
         Just activeNote -> do
-            ct <- liftIO getCurrentTime
             let editing = isEditing st
                 editingTitle = isEditingTitle st
                 activeId = activeNote ^. Note.id
@@ -233,7 +172,6 @@ eventHandler st (VtyEvent ev)  =
                 -- Stop
                 EvKey (KChar 'g') [MCtrl]               -> halt st
                 EvKey (KChar 'c') [MCtrl]               -> halt st
-                -- Movement while editing
                 -- Editor event
                 EvKey (KChar 'w') [MCtrl] | editing     -> continue (st & notes %~ killWord)
                 EvKey (KChar 'b') [MCtrl] | editing     -> continue (st & notes %~ nudgeCursor moveLeft)
