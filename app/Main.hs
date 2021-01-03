@@ -16,7 +16,7 @@ import qualified Brick.Focus          as Focus
 import           Brick.Main           (App (..), appAttrMap, appChooseCursor, appDraw, appHandleEvent, appStartEvent,
                                        defaultMain)
 import           Brick.Types          (CursorLocation, Widget)
-import           Brick.Util           (fg, on)
+import           Brick.Util           (on)
 import           Brick.Widgets.Border (hBorderWithLabel)
 -- import           Brick.Widgets.Center (center)
 import           Brick.Widgets.Core   (str, txt, (<=>))
@@ -68,7 +68,8 @@ theApp =
                         [ (editAttr, white `on` blue)
                         , (editFocusedAttr, black `on` yellow)
                         , ("meta", green `on` black)
-                        , ("title", fg cyan)]
+                        , ("title", cyan `on` black)
+                        , ("link", blue `on` black)]
         }
 
 initialState :: [Note] -> St

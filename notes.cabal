@@ -13,7 +13,6 @@ author:         Ludvig Sundström
 maintainer:     lud.sund@gmail.com
 copyright:      2020 Ludvig Sundström
 license:        BSD3
-license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md

@@ -5,12 +5,12 @@
 
 module Note where
 
-import           Data.Text                  (unpack, unlines)
+import           Data.Text                  (Text, lines, unlines, unpack, unwords, words)
 import           Data.Time.Clock
 import           GHC.Generics
 import           Lens.Micro
 import           Lens.Micro.TH
-import           Prelude                    hiding (id, unlines)
+import           Prelude                    hiding (id, lines, unlines, unwords, words)
 
 import           Brick.AttrMap              (applyAttrMappings)
 import           Brick.Focus                (FocusRing, focusGetCurrent, withFocusRing)
@@ -20,7 +20,7 @@ import           Brick.Util                 (on)
 import           Brick.Widgets.Border       (borderAttr, borderWithLabel)
 import           Brick.Widgets.Border.Style (ascii)
 import           Brick.Widgets.Center       (center)
-import           Brick.Widgets.Core         (hBox, hLimit, padTop, txt, updateAttrMap, vLimit, withAttr,
+import           Brick.Widgets.Core         (hBox, hLimit, padTop, txt, updateAttrMap, vBox, vLimit, withAttr,
                                              withBorderStyle, (<=>))
 import           Brick.Widgets.Edit         (renderEditor)
 import           Graphics.Vty               (black, blue, yellow)
@@ -31,14 +31,14 @@ import           Prim
 import           Resource
 
 data Note = Note
-              { _id          :: Int
-              , _active      :: Bool
-              , _locked      :: Bool
-              , _title       :: Field
-              , _content     :: Field
-              , _focusRing   :: FocusRing Resource
-              , _created     :: UTCTime
-              , _updated     :: UTCTime
+              { _id        :: Int
+              , _active    :: Bool
+              , _locked    :: Bool
+              , _title     :: Field
+              , _content   :: Field
+              , _focusRing :: FocusRing Resource
+              , _created   :: UTCTime
+              , _updated   :: UTCTime
               }
   deriving (Generic)
 
@@ -70,15 +70,22 @@ renderMetadata :: Note -> Widget Resource
 renderMetadata note = padTop (Pad 2) $ shaded (unparseTime (note ^. updated))
     where shaded c = markup (c @? "meta")
 
-render :: Note -> Widget Resource
-render note =
+renderContent :: [Text] -> Text -> Widget Resource
+renderContent titles = vBox . map renderLine . lines
+    where
+        renderLine = hBox . map renderWord . words
+        renderWord x | x `elem` titles = (withAttr "link" . txt . (<> " ")) x
+        renderWord x = (txt . (<> " ")) x
+
+render :: [Text] -> Note -> Widget Resource
+render titles note =
     updateAttrMap (applyAttrMappings (borderStyle (note ^. active))) $
     withBorderStyle ascii $
     borderWithLabel (withAttr "title" $ txt (note ^. (title . Field.content))) $
         hLimit width $
         vLimit height $
         center $
-            txt (note ^. (content . Field.content))
+            renderContent titles (note ^. (content . Field.content))
             <=> renderMetadata note
     where
         borderStyle active = [ (borderAttr, (if active then yellow else blue) `on` black) ]
@@ -93,7 +100,7 @@ renderUnlocked note =
 renderMany :: [Note] -> Widget Resource
 renderMany notes =
     hBox (map
-            (\note -> if _locked note then render note  else renderUnlocked note)
+            (\note -> if _locked note then render (map (^. title . Field.content) notes) note  else renderUnlocked note)
             notes)
 
 
