@@ -18,7 +18,6 @@ import           Brick.Main           (App (..), appAttrMap, appChooseCursor, ap
 import           Brick.Types          (CursorLocation, Widget)
 import           Brick.Util           (on)
 import           Brick.Widgets.Border (hBorderWithLabel)
--- import           Brick.Widgets.Center (center)
 import           Brick.Widgets.Core   (str, txt, (<=>))
 import           Brick.Widgets.Edit   (editAttr, editFocusedAttr)
 import           Graphics.Vty         (black, blue, cyan, defAttr, green, white, yellow)
@@ -69,6 +68,7 @@ theApp =
                         , (editFocusedAttr, black `on` yellow)
                         , ("meta", green `on` black)
                         , ("title", cyan `on` black)
+                        , ("heading1", green `on` black)
                         , ("link", blue `on` black)]
         }
 
