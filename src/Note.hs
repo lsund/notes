@@ -73,23 +73,25 @@ renderContent titles = vBox . map renderLine . lines
 
 render :: [Text] -> Note -> Widget Resource
 render titles note =
-    updateAttrMap (applyAttrMappings (borderStyle (note ^. active))) $
+    updateAttrMap (applyAttrMappings (borderStyle a)) $
     withBorderStyle ascii $
     borderWithLabel (withAttr "title" $ txt (note ^. (title . Field.content))) $
-        hLimit noteWidth $
-        vLimit noteHeight $
+        hLimit (noteWidth a) $
+        vLimit (noteHeight a) $
         center $
             renderContent titles (note ^. (content . Field.content))
             <=> renderMetadata note
-    where
-        borderStyle active = [ (borderAttr, (if active then yellow else blue) `on` black) ]
+              where
+                a = note ^. active
+                borderStyle active = [ (borderAttr, (if active then yellow else blue) `on` black) ]
 
 renderUnlocked :: Note -> Widget Resource
 renderUnlocked note =
     let titleEditor = withFocusRing (note ^. focusRing) (renderEditor (txt . unlines)) (note ^. (title . Field.editor))
         contentEditor = withFocusRing (note ^. focusRing) (renderEditor (txt . unlines)) (note ^. (content . Field.editor))
+        a = note ^. active
      in
-       hLimit noteWidth (vLimit 1 titleEditor) <=> hLimit noteWidth (vLimit noteHeight contentEditor)
+       hLimit (noteWidth a) (vLimit 1 titleEditor) <=> hLimit (noteWidth a) (vLimit (noteHeight a) contentEditor)
 
 renderMany :: [Note] -> Widget Resource
 renderMany notes =
